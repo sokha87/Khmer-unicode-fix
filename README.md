@@ -85,6 +85,19 @@ plus a few sequence keys; it has no pinyin-to-hanzi conversion, so it cannot
 produce Chinese characters. Use Gboard or a dedicated Chinese input method for
 that.
 
+### With no physical keyboard attached
+
+This keyboard has no soft layout of its own, so undocking the tablet while it is
+selected would otherwise leave nothing to type on. Instead it shows a short
+message and a **Choose another keyboard** button that opens the system input
+method picker, so another keyboard is always one tap away.
+
+Whether that appears is left to the inherited
+`InputMethodService.onEvaluateInputViewShown()`, which returns true only when
+`Configuration.keyboard == KEYBOARD_NOKEYS`, when the hard keyboard is hidden,
+or when the user has asked to see a soft keyboard alongside a physical one — so
+with a keyboard attached nothing is drawn and nothing covers the screen.
+
 ### Choosing which languages are active
 
 `LanguagesActivity` (the launcher icon, and the keyboard's

@@ -1,9 +1,15 @@
 package net.socheat.apps.khmerunicodelayoutforexternalkeyboard;
 
+import android.content.Context;
 import android.inputmethodservice.InputMethodService;
+import android.util.TypedValue;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.InputConnection;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 /**
  * Types the five NiDA keys that a key character map physically cannot express.
@@ -48,10 +54,54 @@ public class KhmerSequenceInputMethodService extends InputMethodService {
     private static final int DISQUALIFYING_META =
             KeyEvent.META_CTRL_ON | KeyEvent.META_ALT_ON | KeyEvent.META_META_ON;
 
+    /**
+     * A way out when the physical keyboard is gone.
+     *
+     * <p>This keyboard has no soft layout of its own, so returning {@code null}
+     * here used to strand anyone who undocked their tablet while it was
+     * selected: no keys, and no on-screen way to reach another keyboard.
+     *
+     * <p>Visibility is left to the inherited
+     * {@link #onEvaluateInputViewShown()}, which shows the input view only when
+     * {@code Configuration.keyboard == KEYBOARD_NOKEYS}, when the hard keyboard
+     * is hidden, or when the user has asked to see a soft keyboard alongside a
+     * physical one. So with the keyboard attached this stays hidden and nothing
+     * covers the screen.
+     */
     @Override
     public View onCreateInputView() {
-        // Companion for a physical keyboard: there is deliberately no soft keyboard.
-        return null;
+        int pad = Math.round(16 * getResources().getDisplayMetrics().density);
+
+        TextView message = new TextView(this);
+        message.setText(R.string.ime_no_hardware_keyboard);
+        message.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        message.setPadding(pad, pad, pad, pad / 2);
+
+        Button picker = new Button(this);
+        picker.setText(R.string.ime_choose_keyboard);
+        picker.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                InputMethodManager imm =
+                        (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                if (imm != null) {
+                    imm.showInputMethodPicker();
+                }
+            }
+        });
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.leftMargin = pad;
+        lp.rightMargin = pad;
+        lp.bottomMargin = pad;
+        picker.setLayoutParams(lp);
+
+        LinearLayout view = new LinearLayout(this);
+        view.setOrientation(LinearLayout.VERTICAL);
+        view.addView(message);
+        view.addView(picker);
+        return view;
     }
 
     @Override
