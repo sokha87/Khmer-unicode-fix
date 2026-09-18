@@ -158,3 +158,15 @@ python3 tools/repack_apk.py OldApp.apk unsigned.apk     # swap layout, zipalign
 
 then sign the result (`tools/Sign.java`, or `apksigner`). This route cannot add
 the input method, so the five sequence keys stay two keystrokes.
+
+## Credits and licensing
+
+The keyboard layout derives from the key character map of the original
+*Khmer Unicode Layout for External Keyboard* by [Socheat.net](http://app.socheat.net)
+and from AOSP, both under the Apache License 2.0. The NiDA key table is
+extracted from SIL Global's [Khmer Angkor](https://github.com/keymanapp/keyboards)
+keyboard, under the MIT License. Full notices are in [NOTICE](NOTICE).
+
+This repository does not yet declare a licence of its own. Until it does,
+downstream reuse is governed only by the upstream terms above — add a `LICENSE`
+file to state your own intent.
