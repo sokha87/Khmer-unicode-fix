@@ -64,46 +64,51 @@ switching the physical keyboard to a Latin layout would turn every comma into a
 Khmer vowel. It draws no on-screen keyboard, so select it only on a device with
 a physical keyboard attached.
 
-## Switching between Khmer and English
+## Languages and switching
 
-This input method declares **two keyboard subtypes**, Khmer (NiDA) and English
-(US), so `Ctrl` + `Space` toggles between them on its own — Gboard does not have
-to be installed, enabled or selected. `Ctrl` + `Shift` + `Space` goes back.
-Assign a physical layout to each subtype once, under **Settings → Physical
-keyboard**: *Khmer Unicode* for the Khmer subtype, *English (US)* for the
-English one.
+The keyboard declares one subtype per language — **Khmer (NiDA)**, **English
+(US)**, **French (FR)** and **Chinese (ZH)**. `Ctrl` + `Space` moves to the next
+enabled language and `Ctrl` + `Shift` + `Space` to the previous, all within this
+input method, so Gboard does not have to be installed, enabled or selected.
 
-The shortcut itself is already in both layouts: this `.kcm` maps
+Each language keeps its own physical keyboard layout, assigned once under
+**Settings → Physical keyboard**: *Khmer Unicode* for Khmer, *English (US)* for
+English, *French* for French.
+
+The shortcut itself is already in the layouts: this `.kcm` maps
 `ctrl: fallback LANGUAGE_SWITCH` on Space and `/`, AOSP's stock `Generic.kcm`
 does the same on Space, and `PhoneWindowManager` also handles plain `Ctrl+Space`
 before dispatch, so no app can swallow it.
 
-Getting the subtypes right is fiddly, and `app/src/main/res/xml/method.xml`
-carries the details. Two rules drive it:
+**Chinese types Latin letters only.** This app is a physical-layout provider
+plus a few sequence keys; it has no pinyin-to-hanzi conversion, so it cannot
+produce Chinese characters. Use Gboard or a dedicated Chinese input method for
+that.
 
-* `HardwareKeyboardShortcutController` lists one entry per enabled subtype that
-  passes `isSuitableForPhysicalKeyboardLayoutMapping()` and rotates by locating
-  the *current* entry in that list. A single subtype desynchronises the two
-  sides — the list holds `(ime, null)` while the current position is
-  `(ime, subtype)` — so the shortcut works everywhere except on this input
-  method, which can then be left but never re-entered.
-* `SubtypeUtils.getImplicitlyApplicableSubtypesImpl()` keeps only subtypes whose
-  language matches the system locale, so on a Khmer device the English subtype
-  is dropped — unless no applicable subtype is ASCII-capable, in which case it
-  also adds any keyboard subtype carrying the extra value
-  `EnabledWhenDefaultIsNotAsciiCapable`. Hence the Khmer subtype is marked not
-  ASCII-capable and the English one carries that tag. This is the mechanism
-  AOSP's LatinIME uses for its own English fallback subtype.
+### Choosing which languages are active
 
-**Known limitation:** that second rule is locale-dependent. On a device whose
-system language is English, `filterByLanguage` matches the English subtype,
-an ASCII-capable subtype is therefore present, and the Khmer subtype is not
-implicitly enabled. The layout still works; only the automatic subtype rotation
-is affected. Keeping the system language as Khmer avoids it.
+`LanguagesActivity` (the launcher icon, and the keyboard's
+`android:settingsActivity`) opens the platform's subtype enabler, where each
+language can be ticked or unticked — leave one ticked and `Ctrl+Space` stops
+changing language altogether.
 
-Because the sequence rules check that a key already produces the sequence's
-leading code point, they are inert on the English subtype's layout — an
-ordinary comma stays a comma.
+The hand-off is deliberate. An app cannot enable or disable its own subtypes
+directly: the enabled set lives in `Settings.Secure.ENABLED_INPUT_METHODS` and
+needs `WRITE_SECURE_SETTINGS`. `setExplicitlyEnabledInputMethodSubtypes` would
+allow it, but that is API 34 and this app supports API 21, so the platform
+screen writes the setting instead.
+
+Anything chosen there is stored as *explicitly* enabled, which also removes a
+locale dependency in the defaults: with nothing explicitly enabled,
+`SubtypeUtils.getImplicitlyApplicableSubtypesImpl()` keeps only subtypes whose
+language matches the system locale, and adds the others only because they carry
+the extra value `EnabledWhenDefaultIsNotAsciiCapable` while Khmer is marked not
+ASCII-capable — the same mechanism AOSP's LatinIME uses for its English fallback
+subtype. On an English system locale that default would enable English alone.
+Ticking languages explicitly settles it either way.
+
+`res/xml/method.xml` documents the rest, including why declaring a *single*
+subtype breaks `Ctrl+Space` outright.
 
 ## Verifying the layout
 

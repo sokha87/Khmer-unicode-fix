@@ -28,6 +28,21 @@
         </receiver>
 
         <!--
+            Language picker. Also declared as the input method's
+            android:settingsActivity, so it is reachable both from the app
+            drawer and from the keyboard's entry in system settings.
+        -->
+        <activity
+            android:name=".LanguagesActivity"
+            android:exported="true"
+            android:label="@string/languages_title">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!--
             OPTIONAL companion input method. A .kcm behavior can only produce a
             single code point, so the two NiDA sequence keys (Shift+A and
             Shift+COMMA) cannot be expressed in the layout file at all. This

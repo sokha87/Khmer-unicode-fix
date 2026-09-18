@@ -1,35 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Two keyboard subtypes, so Ctrl+Space toggles Khmer <-> English entirely
-    within this input method, without depending on Gboard being installed,
-    enabled, or selected.
+    One keyboard subtype per language. Ctrl+Space rotates through whichever of
+    them are enabled, so switching stays inside this input method and does not
+    depend on Gboard being installed, enabled or selected.
 
-    Ctrl+Space is handled by HardwareKeyboardShortcutController, which lists one
-    entry per enabled subtype that passes
+    Ctrl+Space is served by HardwareKeyboardShortcutController, which lists one
+    entry per enabled subtype passing
     InputMethodSubtype.isSuitableForPhysicalKeyboardLayoutMapping() - keyboard
     mode, not auxiliary, non-zero id - and rotates by finding the CURRENT entry
-    in that list. Declaring a single subtype is what broke this before: the list
-    held (ime, null) while the current position was (ime, subtype), so nothing
-    matched and the shortcut did nothing while this IME was selected.
+    in that list. Declaring a single subtype is what broke this in 0.2.0: the
+    list held (ime, null) while the current position was (ime, subtype), so
+    nothing matched and the shortcut did nothing while this IME was selected.
 
-    Neither subtype sets overridesImplicitlyEnabledSubtype, because that would
-    return exactly one subtype per mode and collapse the rotation again.
+    No subtype sets overridesImplicitlyEnabledSubtype, which would return one
+    subtype per mode and collapse the rotation to a single entry.
 
-    SubtypeUtils.getImplicitlyApplicableSubtypesImpl() keeps only the subtypes
-    whose language matches the system locale, so on a Khmer device the English
-    one is dropped - unless no applicable subtype is ASCII-capable, in which
-    case it also adds any keyboard subtype carrying the extra value
-    EnabledWhenDefaultIsNotAsciiCapable. The Khmer subtype is deliberately NOT
-    ASCII-capable and the English one carries that tag, which is how both end up
-    enabled. This is the same mechanism AOSP's LatinIME uses for its English
+    Which subtypes are on by default:
+    SubtypeUtils.getImplicitlyApplicableSubtypesImpl() keeps only subtypes whose
+    language matches the system locale - on a Khmer device just the Khmer one -
+    and then, only if no applicable subtype is ASCII-capable, also adds every
+    keyboard subtype carrying the extra value
+    EnabledWhenDefaultIsNotAsciiCapable. So Khmer is deliberately NOT
+    ASCII-capable and every other language carries that tag, which is how they
+    all end up enabled. Same mechanism AOSP's LatinIME uses for its English
     fallback subtype.
 
-    The ids are explicit so that the layout a user assigns to each subtype
-    survives app updates: the assignment is keyed on the subtype handle, and an
-    implicit id is a hash of the subtype's fields.
+    That default is locale-dependent, so LanguagesActivity sends the user to the
+    system subtype enabler. Anything chosen there is stored as EXPLICITLY
+    enabled in Settings.Secure.ENABLED_INPUT_METHODS, which takes precedence
+    over the implicit rules above and is what makes "only one language" work.
+
+    The ids are explicit so the layout a user assigns to each subtype, and the
+    enabled set itself, survive app updates: both are keyed on
+    InputMethodSubtype.hashCode(), which returns subtypeId when one is set and
+    otherwise hashes the subtype's fields.
 -->
 <input-method xmlns:android="http://schemas.android.com/apk/res/android"
-    android:supportsSwitchingToNextInputMethod="true">
+    android:supportsSwitchingToNextInputMethod="true"
+    android:settingsActivity="net.socheat.apps.khmerunicodelayoutforexternalkeyboard.LanguagesActivity">
 
     <subtype
         android:subtypeId="3041"
@@ -42,6 +50,22 @@
         android:subtypeId="3042"
         android:label="@string/subtype_english"
         android:imeSubtypeLocale="en_US"
+        android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="true"
+        android:imeSubtypeExtraValue="EnabledWhenDefaultIsNotAsciiCapable" />
+
+    <subtype
+        android:subtypeId="3043"
+        android:label="@string/subtype_french"
+        android:imeSubtypeLocale="fr_FR"
+        android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="true"
+        android:imeSubtypeExtraValue="EnabledWhenDefaultIsNotAsciiCapable" />
+
+    <subtype
+        android:subtypeId="3044"
+        android:label="@string/subtype_chinese"
+        android:imeSubtypeLocale="zh_CN"
         android:imeSubtypeMode="keyboard"
         android:isAsciiCapable="true"
         android:imeSubtypeExtraValue="EnabledWhenDefaultIsNotAsciiCapable" />

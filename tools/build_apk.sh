@@ -23,8 +23,8 @@ ANDROID_JAR=/usr/lib/android-sdk/platforms/android-23/android.jar
 FRAMEWORK_RES=/usr/share/android-framework-res/framework-res.apk
 
 PACKAGE=net.socheat.apps.khmerunicodelayoutforexternalkeyboard
-VERSION_CODE=4
-VERSION_NAME=0.3.0
+VERSION_CODE=5
+VERSION_NAME=0.4.0
 MIN_SDK=21
 TARGET_SDK=34
 
@@ -32,21 +32,27 @@ echo "==> validating the keyboard layout"
 python3 "$ROOT/tools/validate_kcm.py" \
         "$ROOT/app/src/main/res/raw/keyboard_layout_khmer.kcm"
 
-echo "==> compiling java (source/target 8, dx cannot read newer bytecode)"
-mkdir -p "$WORK/classes"
-javac -source 8 -target 8 -bootclasspath "$ANDROID_JAR" -classpath "$ANDROID_JAR" \
-      -nowarn -Xlint:-options -d "$WORK/classes" \
-      "$ROOT"/app/src/main/java/net/socheat/apps/khmerunicodelayoutforexternalkeyboard/*.java
-
-echo "==> dexing"
-dalvik-exchange --dex --output="$WORK/classes.dex" "$WORK/classes"
-
 echo "==> staging resources"
 cp -r "$ROOT/app/src/main/res" "$WORK/res"
 # aapt reads package and version from the manifest; the Gradle build supplies
 # them from app/build.gradle instead, so inject them for this path only.
 sed "s|<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">|<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\" package=\"$PACKAGE\" android:versionCode=\"$VERSION_CODE\" android:versionName=\"$VERSION_NAME\">\n    <uses-sdk android:minSdkVersion=\"$MIN_SDK\" android:targetSdkVersion=\"$TARGET_SDK\" />|" \
     "$ROOT/app/src/main/AndroidManifest.xml" > "$WORK/AndroidManifest.xml"
+
+echo "==> generating R.java"
+mkdir -p "$WORK/gen"
+( cd "$WORK" && aapt package -f -m -J gen -M AndroidManifest.xml -S res \
+      -I "$FRAMEWORK_RES" )
+
+echo "==> compiling java (source/target 8, dx cannot read newer bytecode)"
+mkdir -p "$WORK/classes"
+javac -source 8 -target 8 -bootclasspath "$ANDROID_JAR" -classpath "$ANDROID_JAR" \
+      -nowarn -Xlint:-options -d "$WORK/classes" \
+      "$ROOT"/app/src/main/java/net/socheat/apps/khmerunicodelayoutforexternalkeyboard/*.java \
+      "$WORK"/gen/net/socheat/apps/khmerunicodelayoutforexternalkeyboard/R.java
+
+echo "==> dexing"
+dalvik-exchange --dex --output="$WORK/classes.dex" "$WORK/classes"
 
 echo "==> packaging resources"
 ( cd "$WORK" && aapt package -f -M AndroidManifest.xml -S res \
