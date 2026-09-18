@@ -1,8 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Deliberately declares NO <subtype>.
+
+    Ctrl+Space is handled by HardwareKeyboardShortcutController, which builds a
+    rotation list of physical-keyboard positions. For an input method with no
+    enabled subtypes it adds InputMethodSubtypeHandle.of(imi, null). The current
+    position comes from IMMS.getCurrentInputMethodSubtypeLocked(), which returns
+    null only when getSubtypeCount() == 0.
+
+    So declaring even one subtype desynchronises the two: the list holds
+    (ime, null) while the current position is (ime, thatSubtype), getNeighborItem
+    finds no match, returns null, and Ctrl+Space does nothing while this IME is
+    selected - the user can only switch away from Gboard, never back.
+
+    With no subtype both sides agree on (ime, null), and IMMS.
+    switchKeyboardLayoutLocked has an explicit subtypeCount == 0 branch that
+    selects this IME with NOT_A_SUBTYPE_ID. The physical keyboard layout is
+    still assigned per input method in Settings, which is how it already
+    appeared.
+-->
 <input-method xmlns:android="http://schemas.android.com/apk/res/android"
-    android:supportsSwitchingToNextInputMethod="true">
-    <subtype
-        android:label="@string/ime_label"
-        android:imeSubtypeLocale="km_KH"
-        android:imeSubtypeMode="keyboard" />
-</input-method>
+    android:supportsSwitchingToNextInputMethod="true" />

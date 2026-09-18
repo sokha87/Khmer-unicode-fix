@@ -64,6 +64,29 @@ switching the physical keyboard to a Latin layout would turn every comma into a
 Khmer vowel. It draws no on-screen keyboard, so select it only on a device with
 a physical keyboard attached.
 
+## Switching between Khmer and English
+
+`Ctrl` + `Space` moves to the next physical-keyboard position, `Ctrl` + `Shift`
++ `Space` to the previous one. Both layouts already carry it: this `.kcm` maps
+`ctrl: fallback LANGUAGE_SWITCH` on Space and `/`, and AOSP's stock
+`Generic.kcm` does the same on Space. `PhoneWindowManager` also handles plain
+`Ctrl+Space` itself, before dispatch, so no app can swallow it.
+
+**This input method must declare no `<subtype>` for that to work while it is
+selected.** `HardwareKeyboardShortcutController` lists an input method with no
+enabled subtypes as `InputMethodSubtypeHandle.of(imi, null)`, but
+`IMMS.getCurrentInputMethodSubtypeLocked()` returns null only when
+`getSubtypeCount() == 0`. Declare one subtype and the two disagree — the list
+holds `(ime, null)`, the current position is `(ime, subtype)`,
+`getNeighborItem` finds no match and returns null. The shortcut then works
+everywhere *except* on this input method, so it can be left but never
+re-entered. See the comment in `app/src/main/res/xml/method.xml`.
+
+If Gboard also has Khmer enabled, the rotation has a third stop that types
+Khmer letters *without* the five sequence keys, because this input method is not
+active there. Removing Khmer from Gboard's languages leaves a clean two-stop
+toggle.
+
 ## Verifying the layout
 
 `tools/validate_kcm.py` ports the platform parser's accept/reject rules, so a
