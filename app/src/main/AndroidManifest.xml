@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true">
+
+        <!--
+            Physical keyboard layout provider. This is the whole app: the
+            system queries this receiver, reads keyboard_layouts.xml and picks
+            up res/raw/keyboard_layout_khmer.kcm. There is no launcher
+            activity - the layout is chosen from
+            Settings > System > Languages & input > Physical keyboard.
+        -->
+        <receiver
+            android:name=".InputReceiver"
+            android:exported="true"
+            android:label="@string/receiver_label">
+            <intent-filter>
+                <action android:name="android.hardware.input.action.QUERY_KEYBOARD_LAYOUTS" />
+            </intent-filter>
+            <meta-data
+                android:name="android.hardware.input.metadata.KEYBOARD_LAYOUTS"
+                android:resource="@xml/keyboard_layouts" />
+        </receiver>
+
+        <!--
+            OPTIONAL companion input method. A .kcm behavior can only produce a
+            single code point, so the two NiDA sequence keys (Shift+A and
+            Shift+COMMA) cannot be expressed in the layout file at all. This
+            service types them as complete sequences.
+
+            It does nothing until the user enables AND selects it in
+            Settings > System > Languages & input > On-screen keyboard.
+            If it is never enabled, the app behaves exactly as before.
+        -->
+        <service
+            android:name=".KhmerSequenceInputMethodService"
+            android:exported="true"
+            android:label="@string/ime_label"
+            android:permission="android.permission.BIND_INPUT_METHOD">
+            <intent-filter>
+                <action android:name="android.view.InputMethod" />
+            </intent-filter>
+            <meta-data
+                android:name="android.view.im"
+                android:resource="@xml/method" />
+        </service>
+    </application>
+</manifest>

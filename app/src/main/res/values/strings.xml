@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Khmer Unicode Layout for External Keyboard</string>
+    <string name="receiver_label">Khmer Unicode Layout</string>
+    <string name="keyboard_layout_khmer_label">Khmer Unicode</string>
+    <string name="ime_label">Khmer Unicode sequence keys</string>
+</resources>
