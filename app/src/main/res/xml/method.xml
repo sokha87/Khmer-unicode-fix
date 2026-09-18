@@ -1,23 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Deliberately declares NO <subtype>.
+    Two keyboard subtypes, so Ctrl+Space toggles Khmer <-> English entirely
+    within this input method, without depending on Gboard being installed,
+    enabled, or selected.
 
-    Ctrl+Space is handled by HardwareKeyboardShortcutController, which builds a
-    rotation list of physical-keyboard positions. For an input method with no
-    enabled subtypes it adds InputMethodSubtypeHandle.of(imi, null). The current
-    position comes from IMMS.getCurrentInputMethodSubtypeLocked(), which returns
-    null only when getSubtypeCount() == 0.
+    Ctrl+Space is handled by HardwareKeyboardShortcutController, which lists one
+    entry per enabled subtype that passes
+    InputMethodSubtype.isSuitableForPhysicalKeyboardLayoutMapping() - keyboard
+    mode, not auxiliary, non-zero id - and rotates by finding the CURRENT entry
+    in that list. Declaring a single subtype is what broke this before: the list
+    held (ime, null) while the current position was (ime, subtype), so nothing
+    matched and the shortcut did nothing while this IME was selected.
 
-    So declaring even one subtype desynchronises the two: the list holds
-    (ime, null) while the current position is (ime, thatSubtype), getNeighborItem
-    finds no match, returns null, and Ctrl+Space does nothing while this IME is
-    selected - the user can only switch away from Gboard, never back.
+    Neither subtype sets overridesImplicitlyEnabledSubtype, because that would
+    return exactly one subtype per mode and collapse the rotation again.
 
-    With no subtype both sides agree on (ime, null), and IMMS.
-    switchKeyboardLayoutLocked has an explicit subtypeCount == 0 branch that
-    selects this IME with NOT_A_SUBTYPE_ID. The physical keyboard layout is
-    still assigned per input method in Settings, which is how it already
-    appeared.
+    SubtypeUtils.getImplicitlyApplicableSubtypesImpl() keeps only the subtypes
+    whose language matches the system locale, so on a Khmer device the English
+    one is dropped - unless no applicable subtype is ASCII-capable, in which
+    case it also adds any keyboard subtype carrying the extra value
+    EnabledWhenDefaultIsNotAsciiCapable. The Khmer subtype is deliberately NOT
+    ASCII-capable and the English one carries that tag, which is how both end up
+    enabled. This is the same mechanism AOSP's LatinIME uses for its English
+    fallback subtype.
+
+    The ids are explicit so that the layout a user assigns to each subtype
+    survives app updates: the assignment is keyed on the subtype handle, and an
+    implicit id is a hash of the subtype's fields.
 -->
 <input-method xmlns:android="http://schemas.android.com/apk/res/android"
-    android:supportsSwitchingToNextInputMethod="true" />
+    android:supportsSwitchingToNextInputMethod="true">
+
+    <subtype
+        android:subtypeId="3041"
+        android:label="@string/subtype_khmer"
+        android:imeSubtypeLocale="km_KH"
+        android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="false" />
+
+    <subtype
+        android:subtypeId="3042"
+        android:label="@string/subtype_english"
+        android:imeSubtypeLocale="en_US"
+        android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="true"
+        android:imeSubtypeExtraValue="EnabledWhenDefaultIsNotAsciiCapable" />
+
+</input-method>

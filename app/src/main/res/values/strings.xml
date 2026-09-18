@@ -4,4 +4,6 @@
     <string name="receiver_label">Khmer Unicode Layout</string>
     <string name="keyboard_layout_khmer_label">Khmer Unicode</string>
     <string name="ime_label">Khmer Unicode sequence keys</string>
+    <string name="subtype_khmer">Khmer (NiDA)</string>
+    <string name="subtype_english">English (US)</string>
 </resources>

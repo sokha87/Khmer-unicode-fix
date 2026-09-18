@@ -66,26 +66,44 @@ a physical keyboard attached.
 
 ## Switching between Khmer and English
 
-`Ctrl` + `Space` moves to the next physical-keyboard position, `Ctrl` + `Shift`
-+ `Space` to the previous one. Both layouts already carry it: this `.kcm` maps
-`ctrl: fallback LANGUAGE_SWITCH` on Space and `/`, and AOSP's stock
-`Generic.kcm` does the same on Space. `PhoneWindowManager` also handles plain
-`Ctrl+Space` itself, before dispatch, so no app can swallow it.
+This input method declares **two keyboard subtypes**, Khmer (NiDA) and English
+(US), so `Ctrl` + `Space` toggles between them on its own — Gboard does not have
+to be installed, enabled or selected. `Ctrl` + `Shift` + `Space` goes back.
+Assign a physical layout to each subtype once, under **Settings → Physical
+keyboard**: *Khmer Unicode* for the Khmer subtype, *English (US)* for the
+English one.
 
-**This input method must declare no `<subtype>` for that to work while it is
-selected.** `HardwareKeyboardShortcutController` lists an input method with no
-enabled subtypes as `InputMethodSubtypeHandle.of(imi, null)`, but
-`IMMS.getCurrentInputMethodSubtypeLocked()` returns null only when
-`getSubtypeCount() == 0`. Declare one subtype and the two disagree — the list
-holds `(ime, null)`, the current position is `(ime, subtype)`,
-`getNeighborItem` finds no match and returns null. The shortcut then works
-everywhere *except* on this input method, so it can be left but never
-re-entered. See the comment in `app/src/main/res/xml/method.xml`.
+The shortcut itself is already in both layouts: this `.kcm` maps
+`ctrl: fallback LANGUAGE_SWITCH` on Space and `/`, AOSP's stock `Generic.kcm`
+does the same on Space, and `PhoneWindowManager` also handles plain `Ctrl+Space`
+before dispatch, so no app can swallow it.
 
-If Gboard also has Khmer enabled, the rotation has a third stop that types
-Khmer letters *without* the five sequence keys, because this input method is not
-active there. Removing Khmer from Gboard's languages leaves a clean two-stop
-toggle.
+Getting the subtypes right is fiddly, and `app/src/main/res/xml/method.xml`
+carries the details. Two rules drive it:
+
+* `HardwareKeyboardShortcutController` lists one entry per enabled subtype that
+  passes `isSuitableForPhysicalKeyboardLayoutMapping()` and rotates by locating
+  the *current* entry in that list. A single subtype desynchronises the two
+  sides — the list holds `(ime, null)` while the current position is
+  `(ime, subtype)` — so the shortcut works everywhere except on this input
+  method, which can then be left but never re-entered.
+* `SubtypeUtils.getImplicitlyApplicableSubtypesImpl()` keeps only subtypes whose
+  language matches the system locale, so on a Khmer device the English subtype
+  is dropped — unless no applicable subtype is ASCII-capable, in which case it
+  also adds any keyboard subtype carrying the extra value
+  `EnabledWhenDefaultIsNotAsciiCapable`. Hence the Khmer subtype is marked not
+  ASCII-capable and the English one carries that tag. This is the mechanism
+  AOSP's LatinIME uses for its own English fallback subtype.
+
+**Known limitation:** that second rule is locale-dependent. On a device whose
+system language is English, `filterByLanguage` matches the English subtype,
+an ASCII-capable subtype is therefore present, and the Khmer subtype is not
+implicitly enabled. The layout still works; only the automatic subtype rotation
+is affected. Keeping the system language as Khmer avoids it.
+
+Because the sequence rules check that a key already produces the sequence's
+leading code point, they are inert on the English subtype's layout — an
+ordinary comma stays a comma.
 
 ## Verifying the layout
 
