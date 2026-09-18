@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The bubble shown above a key while it is pressed. -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:background="#DD212121"
+    android:textColor="#FFFFFFFF"
+    android:textSize="32sp"
+    android:gravity="center"
+    android:minWidth="40dp"
+    android:minHeight="48dp" />

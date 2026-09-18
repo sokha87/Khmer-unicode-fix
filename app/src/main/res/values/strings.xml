@@ -20,7 +20,4 @@ Note: Chinese types Latin letters only. This keyboard has no pinyin conversion, 
     <string name="languages_choose">Choose languages</string>
     <string name="languages_keyboard_settings">Keyboard settings</string>
     <string name="languages_unavailable">This screen is not available on this device. Open Settings → Languages &amp; input instead.</string>
-
-    <string name="ime_no_hardware_keyboard">No physical keyboard is connected. This keyboard types on a physical keyboard only, so it has no on-screen keys of its own.</string>
-    <string name="ime_choose_keyboard">Choose another keyboard</string>
 </resources>

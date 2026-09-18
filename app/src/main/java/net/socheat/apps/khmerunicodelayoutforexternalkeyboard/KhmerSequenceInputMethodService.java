@@ -2,36 +2,41 @@ package net.socheat.apps.khmerunicodelayoutforexternalkeyboard;
 
 import android.content.Context;
 import android.inputmethodservice.InputMethodService;
-import android.util.TypedValue;
+import android.inputmethodservice.Keyboard;
+import android.inputmethodservice.KeyboardView;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.Button;
-import android.widget.LinearLayout;
-import android.widget.TextView;
+import android.view.inputmethod.InputMethodSubtype;
 
 /**
- * Types the five NiDA keys that a key character map physically cannot express.
+ * Khmer NiDA keyboard: the five sequence keys on a physical keyboard, and a full
+ * on-screen keyboard when there is no physical keyboard attached.
  *
- * <p>An Android .kcm behavior is a single UTF-16 code unit: AOSP's
+ * <h3>Physical keyboard</h3>
+ * <p>An Android {@code .kcm} behavior is a single UTF-16 code unit: AOSP's
  * {@code KeyCharacterMap.cpp} parses one character between the quotes and rejects
  * a second literal with "Cannot combine multiple character literals". Five NiDA
- * positions are two-code-point vowel sequences, and Unicode has no precomposed
- * form for any of them, so the layout file carries only their first code point.
- * This service commits them in full, matching the desktop NiDA keyboard.
+ * positions are two-code-point vowel sequences with no precomposed form in
+ * Unicode, so the layout file carries only their first code point and
+ * {@link #onKeyDown} commits them in full. Every other key falls through to the
+ * layout, which stays the single source of truth for the rest of the keyboard.
  *
- * <p>Every other key is left alone and falls through to the layout, which stays
- * the single source of truth for the rest of the keyboard.
+ * <h3>On-screen keyboard</h3>
+ * <p>Undocking used to leave nothing to type on, because this service had no
+ * input view. It now shows a keyboard generated from the same NiDA table as the
+ * physical layout, so the on-screen keys sit where the physical ones do. The
+ * same five sequences are typed in full here through
+ * {@code android:keyOutputText}, which arrives as {@link #onText}.
  *
- * <p><b>Why each rule checks the character first.</b> One of the five is the
- * <em>unshifted</em> comma. Blindly rewriting that key would turn an ordinary
- * comma into a Khmer vowel whenever the user switched their physical keyboard to
- * a Latin layout. So a rule fires only when the key currently produces the
- * sequence's leading code point — which is true exactly when the Khmer layout is
- * the active one. Under any other layout these keys behave normally.
+ * <p>Whether it appears is left to the inherited
+ * {@link #onEvaluateInputViewShown()}, which returns true only when there is no
+ * usable hardware keyboard, so nothing is drawn while one is attached.
  */
-public class KhmerSequenceInputMethodService extends InputMethodService {
+public class KhmerSequenceInputMethodService extends InputMethodService
+        implements KeyboardView.OnKeyboardActionListener {
 
     private static final char NIKAHIT = 'ំ';   // ំ  completes -AM / -OM
     private static final char REAHMUK = 'ះ';   // ះ  completes -AH / -OH
@@ -54,55 +59,131 @@ public class KhmerSequenceInputMethodService extends InputMethodService {
     private static final int DISQUALIFYING_META =
             KeyEvent.META_CTRL_ON | KeyEvent.META_ALT_ON | KeyEvent.META_META_ON;
 
-    /**
-     * A way out when the physical keyboard is gone.
-     *
-     * <p>This keyboard has no soft layout of its own, so returning {@code null}
-     * here used to strand anyone who undocked their tablet while it was
-     * selected: no keys, and no on-screen way to reach another keyboard.
-     *
-     * <p>Visibility is left to the inherited
-     * {@link #onEvaluateInputViewShown()}, which shows the input view only when
-     * {@code Configuration.keyboard == KEYBOARD_NOKEYS}, when the hard keyboard
-     * is hidden, or when the user has asked to see a soft keyboard alongside a
-     * physical one. So with the keyboard attached this stays hidden and nothing
-     * covers the screen.
-     */
+    private KeyboardView keyboardView;
+    private Keyboard khmer;
+    private Keyboard khmerShift;
+    private Keyboard latin;
+    private Keyboard latinShift;
+
+    /** Which script the on-screen keyboard is showing. */
+    private boolean latinLayer;
+    private boolean shifted;
+
+    // ---------------------------------------------------------------- on-screen
+
+    @Override
+    public void onInitializeInterface() {
+        super.onInitializeInterface();
+        // Called again after a configuration change, so key widths stay correct.
+        khmer = new Keyboard(this, R.xml.soft_khmer);
+        khmerShift = new Keyboard(this, R.xml.soft_khmer_shift);
+        latin = new Keyboard(this, R.xml.soft_latin);
+        latinShift = new Keyboard(this, R.xml.soft_latin_shift);
+    }
+
     @Override
     public View onCreateInputView() {
-        int pad = Math.round(16 * getResources().getDisplayMetrics().density);
-
-        TextView message = new TextView(this);
-        message.setText(R.string.ime_no_hardware_keyboard);
-        message.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        message.setPadding(pad, pad, pad, pad / 2);
-
-        Button picker = new Button(this);
-        picker.setText(R.string.ime_choose_keyboard);
-        picker.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                InputMethodManager imm =
-                        (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                if (imm != null) {
-                    imm.showInputMethodPicker();
-                }
-            }
-        });
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.leftMargin = pad;
-        lp.rightMargin = pad;
-        lp.bottomMargin = pad;
-        picker.setLayoutParams(lp);
-
-        LinearLayout view = new LinearLayout(this);
-        view.setOrientation(LinearLayout.VERTICAL);
-        view.addView(message);
-        view.addView(picker);
-        return view;
+        keyboardView = (KeyboardView) getLayoutInflater()
+                .inflate(R.layout.soft_keyboard, null);
+        keyboardView.setOnKeyboardActionListener(this);
+        applyKeyboard();
+        return keyboardView;
     }
+
+    @Override
+    public void onStartInputView(EditorInfo info, boolean restarting) {
+        super.onStartInputView(info, restarting);
+        latinLayer = !isKhmerSubtype();
+        shifted = false;
+        applyKeyboard();
+    }
+
+    @Override
+    public void onCurrentInputMethodSubtypeChanged(InputMethodSubtype subtype) {
+        super.onCurrentInputMethodSubtypeChanged(subtype);
+        latinLayer = subtype == null || !isKhmer(subtype);
+        shifted = false;
+        applyKeyboard();
+    }
+
+    private boolean isKhmerSubtype() {
+        // The current subtype lives on InputMethodManager, not on the service.
+        InputMethodManager imm =
+                (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        return imm != null && isKhmer(imm.getCurrentInputMethodSubtype());
+    }
+
+    private static boolean isKhmer(InputMethodSubtype subtype) {
+        return subtype != null && subtype.getLocale() != null
+                && subtype.getLocale().startsWith("km");
+    }
+
+    private void applyKeyboard() {
+        if (keyboardView == null) {
+            return;
+        }
+        Keyboard keyboard = latinLayer
+                ? (shifted ? latinShift : latin)
+                : (shifted ? khmerShift : khmer);
+        keyboardView.setKeyboard(keyboard);
+        keyboardView.setShifted(shifted);
+    }
+
+    @Override
+    public void onKey(int primaryCode, int[] keyCodes) {
+        switch (primaryCode) {
+            case Keyboard.KEYCODE_SHIFT:
+                shifted = !shifted;
+                applyKeyboard();
+                return;
+            case Keyboard.KEYCODE_MODE_CHANGE:
+                latinLayer = !latinLayer;
+                shifted = false;
+                applyKeyboard();
+                return;
+            case Keyboard.KEYCODE_DELETE:
+                sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL);
+                return;
+            case Keyboard.KEYCODE_DONE:
+                if (!sendDefaultEditorAction(true)) {
+                    sendDownUpKeyEvents(KeyEvent.KEYCODE_ENTER);
+                }
+                return;
+            default:
+                commit(String.valueOf((char) primaryCode));
+                // Shift is one-shot, like every other soft keyboard.
+                if (shifted) {
+                    shifted = false;
+                    applyKeyboard();
+                }
+        }
+    }
+
+    /** Keys declaring {@code android:keyOutputText} arrive here — the sequences. */
+    @Override
+    public void onText(CharSequence text) {
+        commit(text.toString());
+        if (shifted) {
+            shifted = false;
+            applyKeyboard();
+        }
+    }
+
+    private void commit(String text) {
+        InputConnection connection = getCurrentInputConnection();
+        if (connection != null) {
+            connection.commitText(text, 1);
+        }
+    }
+
+    @Override public void onPress(int primaryCode) { }
+    @Override public void onRelease(int primaryCode) { }
+    @Override public void swipeLeft() { }
+    @Override public void swipeRight() { }
+    @Override public void swipeDown() { }
+    @Override public void swipeUp() { }
+
+    // ---------------------------------------------------------------- physical
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
