@@ -85,4 +85,29 @@ every build via the `validateKcm` Gradle task.
 ```
 
 Requires the Android SDK (compileSdk 34, minSdk 21) and `python3` on `PATH` for
-the layout check.
+the layout check. This is the build that produces the full app, the optional
+input method included.
+
+### Patching the layout into an existing APK, without the SDK
+
+The `.kcm` is a plain resource stored verbatim in the APK's ZIP, so the layout
+alone can be swapped without aapt2 or a resource-table rebuild:
+
+```
+python3 tools/repack_apk.py OldApp.apk unsigned.apk      # swap layout, zipalign
+javac -cp apksig.jar -d . tools/Sign.java                # com.android.tools.build:apksig
+java -cp apksig.jar:. Sign keystore.p12 PASS ALIAS unsigned.apk signed.apk 21
+```
+
+`Sign` signs with both v1 and v2 and then verifies the result. On JDK 9+,
+apksig 2.3.0 needs one patch to build (`PKCS7.encodeSignedData` takes a
+`DerOutputStream` now) plus
+`--add-exports java.base/sun.security.{pkcs,x509,util}=ALL-UNNAMED`.
+
+This route only changes the layout. The input method needs a real SDK build,
+because adding a component means editing the binary manifest and resource
+table.
+
+**Re-signing with a different key changes the app's identity**, so Android will
+refuse to install it over an existing copy — uninstall the old one first. Use
+the original signing key if you have it and want in-place updates.
