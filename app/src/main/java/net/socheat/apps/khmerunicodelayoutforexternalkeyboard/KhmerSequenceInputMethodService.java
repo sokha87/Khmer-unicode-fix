@@ -1,6 +1,8 @@
 package net.socheat.apps.khmerunicodelayoutforexternalkeyboard;
 
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.inputmethodservice.InputMethodService;
 import android.inputmethodservice.Keyboard;
 import android.inputmethodservice.KeyboardView;
@@ -31,9 +33,8 @@ import android.view.inputmethod.InputMethodSubtype;
  * same five sequences are typed in full here through
  * {@code android:keyOutputText}, which arrives as {@link #onText}.
  *
- * <p>Whether it appears is left to the inherited
- * {@link #onEvaluateInputViewShown()}, which returns true only when there is no
- * usable hardware keyboard, so nothing is drawn while one is attached.
+ * <p>{@link #onEvaluateInputViewShown()} keeps it out of the way while a
+ * physical keyboard is attached.
  */
 public class KhmerSequenceInputMethodService extends InputMethodService
         implements KeyboardView.OnKeyboardActionListener {
@@ -59,6 +60,12 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     private static final int DISQUALIFYING_META =
             KeyEvent.META_CTRL_ON | KeyEvent.META_ALT_ON | KeyEvent.META_META_ON;
 
+    /** Where {@link LanguagesActivity} stores the on-screen keyboard preference. */
+    static final String PREFS = "keyboard";
+
+    /** Show the on-screen keyboard even while a physical keyboard is attached. */
+    static final String PREF_SHOW_WITH_HARD_KEYBOARD = "show_with_hard_keyboard";
+
     private KeyboardView keyboardView;
     private Keyboard khmer;
     private Keyboard khmerShift;
@@ -79,6 +86,32 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         khmerShift = new Keyboard(this, R.xml.soft_khmer_shift);
         latin = new Keyboard(this, R.xml.soft_latin);
         latinShift = new Keyboard(this, R.xml.soft_latin_shift);
+    }
+
+    /**
+     * Keeps the on-screen keyboard hidden while a physical keyboard is attached.
+     *
+     * <p>This deliberately does not call {@code super}. The inherited version
+     * also returns true whenever {@code Settings.Secure.SHOW_IME_WITH_HARD_KEYBOARD}
+     * is set, and that setting is not public API, so an app can neither turn it
+     * off nor offer a reliable way to. On some devices it is on by default,
+     * which left a soft keyboard covering the screen for someone typing on their
+     * physical keyboard - the exact situation this app exists to serve.
+     *
+     * <p>So the decision is taken here instead, and {@link LanguagesActivity}
+     * exposes it. With no physical keyboard the on-screen keyboard always shows,
+     * because otherwise there would be nothing to type on.
+     */
+    @Override
+    public boolean onEvaluateInputViewShown() {
+        Configuration config = getResources().getConfiguration();
+        boolean noHardKeyboard = config.keyboard == Configuration.KEYBOARD_NOKEYS
+                || config.hardKeyboardHidden == Configuration.HARDKEYBOARDHIDDEN_YES;
+        if (noHardKeyboard) {
+            return true;
+        }
+        SharedPreferences prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        return prefs.getBoolean(PREF_SHOW_WITH_HARD_KEYBOARD, false);
     }
 
     @Override

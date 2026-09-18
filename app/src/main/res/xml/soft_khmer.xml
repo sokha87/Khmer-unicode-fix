@@ -6,6 +6,7 @@
     android:horizontalGap="0px"
     android:verticalGap="0px">
     <Row>
+        <Key android:codes="171" android:keyLabel="«" />
         <Key android:codes="6113" android:keyLabel="១" />
         <Key android:codes="6114" android:keyLabel="២" />
         <Key android:codes="6115" android:keyLabel="៣" />
@@ -16,6 +17,8 @@
         <Key android:codes="6120" android:keyLabel="៨" />
         <Key android:codes="6121" android:keyLabel="៩" />
         <Key android:codes="6112" android:keyLabel="០" />
+        <Key android:codes="6053" android:keyLabel="ឥ" />
+        <Key android:codes="6066" android:keyLabel="ឲ" />
     </Row>
     <Row>
         <Key android:codes="6022" android:keyLabel="ឆ" />
@@ -28,6 +31,9 @@
         <Key android:codes="6071" android:keyLabel="ិ" />
         <Key android:codes="6084" android:keyLabel="ោ" />
         <Key android:codes="6037" android:keyLabel="ផ" />
+        <Key android:codes="6080" android:keyLabel="ៀ" />
+        <Key android:codes="6058" android:keyLabel="ឪ" />
+        <Key android:codes="6062" android:keyLabel="ឮ" />
     </Row>
     <Row>
         <Key android:codes="6070" android:keyLabel="ា" />
@@ -40,6 +46,7 @@
         <Key android:codes="6016" android:keyLabel="ក" />
         <Key android:codes="6043" android:keyLabel="ល" />
         <Key android:codes="6078" android:keyLabel="ើ" />
+        <Key android:codes="6091" android:keyLabel="់" />
     </Row>
     <Row>
         <Key android:codes="-1" android:keyLabel="⇧" android:keyWidth="15%p" android:isModifier="true" android:isSticky="true" />
@@ -52,6 +59,7 @@
         <Key android:codes="6040" android:keyLabel="ម" android:keyWidth="7.7%p" />
         <Key android:codes="6075" android:keyLabel="ុំ" android:keyOutputText="ុំ" android:keyWidth="7.7%p" />
         <Key android:codes="6100" android:keyLabel="។" android:keyWidth="7.7%p" />
+        <Key android:codes="6090" android:keyLabel="៊" android:keyWidth="7.7%p" />
         <Key android:codes="-5" android:keyLabel="⌫" android:keyWidth="15%p" android:isRepeatable="true" />
     </Row>
     <Row android:rowEdgeFlags="bottom">

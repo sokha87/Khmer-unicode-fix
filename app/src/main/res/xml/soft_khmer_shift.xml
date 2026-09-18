@@ -6,6 +6,7 @@
     android:horizontalGap="0px"
     android:verticalGap="0px">
     <Row>
+        <Key android:codes="187" android:keyLabel="»" />
         <Key android:codes="33" android:keyLabel="!" />
         <Key android:codes="6103" android:keyLabel="ៗ" />
         <Key android:codes="34" android:keyLabel="&quot;" />
@@ -16,6 +17,8 @@
         <Key android:codes="6095" android:keyLabel="៏" />
         <Key android:codes="40" android:keyLabel="(" />
         <Key android:codes="41" android:keyLabel=")" />
+        <Key android:codes="6092" android:keyLabel="៌" />
+        <Key android:codes="61" android:keyLabel="=" />
     </Row>
     <Row>
         <Key android:codes="6024" android:keyLabel="ឈ" />
@@ -28,6 +31,9 @@
         <Key android:codes="6072" android:keyLabel="ី" />
         <Key android:codes="6085" android:keyLabel="ៅ" />
         <Key android:codes="6039" android:keyLabel="ភ" />
+        <Key android:codes="6079" android:keyLabel="ឿ" />
+        <Key android:codes="6055" android:keyLabel="ឧ" />
+        <Key android:codes="6061" android:keyLabel="ឭ" />
     </Row>
     <Row>
         <Key android:codes="6070" android:keyLabel="ាំ" android:keyOutputText="ាំ" />
@@ -40,6 +46,7 @@
         <Key android:codes="6018" android:keyLabel="គ" />
         <Key android:codes="6049" android:keyLabel="ឡ" />
         <Key android:codes="6084" android:keyLabel="ោះ" android:keyOutputText="ោះ" />
+        <Key android:codes="6089" android:keyLabel="៉" />
     </Row>
     <Row>
         <Key android:codes="-1" android:keyLabel="⇧" android:keyWidth="15%p" android:isModifier="true" android:isSticky="true" />
@@ -52,6 +59,7 @@
         <Key android:codes="6086" android:keyLabel="ំ" android:keyWidth="7.7%p" />
         <Key android:codes="6075" android:keyLabel="ុះ" android:keyOutputText="ុះ" android:keyWidth="7.7%p" />
         <Key android:codes="6101" android:keyLabel="៕" android:keyWidth="7.7%p" />
+        <Key android:codes="63" android:keyLabel="\?" android:keyWidth="7.7%p" />
         <Key android:codes="-5" android:keyLabel="⌫" android:keyWidth="15%p" android:isRepeatable="true" />
     </Row>
     <Row android:rowEdgeFlags="bottom">

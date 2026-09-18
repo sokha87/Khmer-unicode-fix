@@ -103,8 +103,20 @@ Whether it appears is left to the inherited
 or when the user has asked for a soft keyboard alongside a physical one — so
 nothing is drawn while a keyboard is attached.
 
-It is a plain keyboard: no word prediction, no long-press popups, no emoji.
-It exists so undocking never leaves you with nothing to type on.
+Every printing key of the physical layout is on it — 52 positions per layer,
+including the ones a compact soft keyboard usually drops, such as `់` U+17CB
+BANTOC on the apostrophe key. It is otherwise a plain keyboard: no word
+prediction, no long-press popups, no emoji. It exists so undocking never leaves
+you with nothing to type on.
+
+`onEvaluateInputViewShown()` is overridden rather than inherited, and
+deliberately does not call `super`. The inherited version also returns true
+whenever `Settings.Secure.SHOW_IME_WITH_HARD_KEYBOARD` is set; that setting is
+not public API, so an app can neither turn it off nor offer a reliable way to,
+and on some devices it is on by default — leaving a soft keyboard covering the
+screen of someone typing on their physical keyboard. The decision is taken in
+the service instead, defaulting to hidden, with a checkbox in **Keyboard
+languages** for anyone who does want both at once.
 
 Regenerate it with:
 

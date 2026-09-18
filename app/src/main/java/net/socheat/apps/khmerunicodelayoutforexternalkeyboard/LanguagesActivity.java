@@ -4,12 +4,15 @@ import android.app.Activity;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -52,6 +55,25 @@ public class LanguagesActivity extends Activity {
         body.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
         body.setPadding(0, gap, 0, gap);
         column.addView(body);
+
+        final SharedPreferences prefs = getSharedPreferences(
+                KhmerSequenceInputMethodService.PREFS, MODE_PRIVATE);
+        CheckBox showWithHardKeyboard = new CheckBox(this);
+        showWithHardKeyboard.setText(R.string.languages_show_with_hard_keyboard);
+        showWithHardKeyboard.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        showWithHardKeyboard.setChecked(prefs.getBoolean(
+                KhmerSequenceInputMethodService.PREF_SHOW_WITH_HARD_KEYBOARD, false));
+        showWithHardKeyboard.setOnCheckedChangeListener(
+                new CompoundButton.OnCheckedChangeListener() {
+                    @Override
+                    public void onCheckedChanged(CompoundButton b, boolean checked) {
+                        prefs.edit().putBoolean(
+                                KhmerSequenceInputMethodService.PREF_SHOW_WITH_HARD_KEYBOARD,
+                                checked).apply();
+                    }
+                });
+        showWithHardKeyboard.setPadding(0, gap, 0, gap);
+        column.addView(showWithHardKeyboard);
 
         column.addView(button(R.string.languages_choose, new View.OnClickListener() {
             @Override

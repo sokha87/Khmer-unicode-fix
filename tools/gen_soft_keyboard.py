@@ -15,26 +15,29 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 NIDA = json.load(open(os.path.join(HERE, 'nida_layout.json'), encoding='utf-8'))
 
-# Keys are named by the physical key they correspond to, row by row.
+# Keys are named by the physical key they correspond to, row by row. Every
+# printing key of the physical layout appears, so nothing typeable on the
+# physical keyboard is missing on screen.
 ROWS = [
-    ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
-    ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
-    ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'SEMICOLON'],
-    ['Z', 'X', 'C', 'V', 'B', 'N', 'M', 'COMMA', 'PERIOD'],
+    ['GRAVE', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'MINUS', 'EQUALS'],
+    ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P',
+     'LEFT_BRACKET', 'RIGHT_BRACKET', 'BACKSLASH'],
+    ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'SEMICOLON', 'APOSTROPHE'],
+    ['Z', 'X', 'C', 'V', 'B', 'N', 'M', 'COMMA', 'PERIOD', 'SLASH'],
 ]
 
 LATIN = {
     'base': [
-        ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
-        ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
-        ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';'],
-        ['z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.'],
+        ['`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='],
+        ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', '\\'],
+        ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', "'"],
+        ['z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/'],
     ],
     'shift': [
-        ['!', '@', '#', '$', '%', '^', '&', '*', '(', ')'],
-        ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
-        ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':'],
-        ['Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>'],
+        ['~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+'],
+        ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '|'],
+        ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"'],
+        ['Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?'],
     ],
 }
 
