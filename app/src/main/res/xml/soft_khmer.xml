@@ -6,61 +6,61 @@
     android:horizontalGap="0px"
     android:verticalGap="0px">
     <Row>
-        <Key android:codes="171" android:keyLabel="«" />
-        <Key android:codes="6113" android:keyLabel="១" />
-        <Key android:codes="6114" android:keyLabel="២" />
-        <Key android:codes="6115" android:keyLabel="៣" />
-        <Key android:codes="6116" android:keyLabel="៤" />
-        <Key android:codes="6117" android:keyLabel="៥" />
-        <Key android:codes="6118" android:keyLabel="៦" />
-        <Key android:codes="6119" android:keyLabel="៧" />
-        <Key android:codes="6120" android:keyLabel="៨" />
-        <Key android:codes="6121" android:keyLabel="៩" />
-        <Key android:codes="6112" android:keyLabel="០" />
-        <Key android:codes="6053" android:keyLabel="ឥ" />
-        <Key android:codes="6066" android:keyLabel="ឲ" />
+        <Key android:codes="171" android:keyLabel="«" android:keyWidth="7.69%p" />
+        <Key android:codes="6113" android:keyLabel="១" android:keyWidth="7.69%p" />
+        <Key android:codes="6114" android:keyLabel="២" android:keyWidth="7.69%p" />
+        <Key android:codes="6115" android:keyLabel="៣" android:keyWidth="7.69%p" />
+        <Key android:codes="6116" android:keyLabel="៤" android:keyWidth="7.69%p" />
+        <Key android:codes="6117" android:keyLabel="៥" android:keyWidth="7.69%p" />
+        <Key android:codes="6118" android:keyLabel="៦" android:keyWidth="7.69%p" />
+        <Key android:codes="6119" android:keyLabel="៧" android:keyWidth="7.69%p" />
+        <Key android:codes="6120" android:keyLabel="៨" android:keyWidth="7.69%p" />
+        <Key android:codes="6121" android:keyLabel="៩" android:keyWidth="7.69%p" />
+        <Key android:codes="6112" android:keyLabel="០" android:keyWidth="7.69%p" />
+        <Key android:codes="6053" android:keyLabel="ឥ" android:keyWidth="7.69%p" />
+        <Key android:codes="6066" android:keyLabel="ឲ" android:keyWidth="7.69%p" />
     </Row>
     <Row>
-        <Key android:codes="6022" android:keyLabel="ឆ" />
-        <Key android:codes="6073" android:keyLabel="ឹ" />
-        <Key android:codes="6081" android:keyLabel="េ" />
-        <Key android:codes="6042" android:keyLabel="រ" />
-        <Key android:codes="6031" android:keyLabel="ត" />
-        <Key android:codes="6041" android:keyLabel="យ" />
-        <Key android:codes="6075" android:keyLabel="ុ" />
-        <Key android:codes="6071" android:keyLabel="ិ" />
-        <Key android:codes="6084" android:keyLabel="ោ" />
-        <Key android:codes="6037" android:keyLabel="ផ" />
-        <Key android:codes="6080" android:keyLabel="ៀ" />
-        <Key android:codes="6058" android:keyLabel="ឪ" />
-        <Key android:codes="6062" android:keyLabel="ឮ" />
+        <Key android:codes="6022" android:keyLabel="ឆ" android:keyWidth="7.69%p" />
+        <Key android:codes="6073" android:keyLabel="ឹ" android:keyWidth="7.69%p" />
+        <Key android:codes="6081" android:keyLabel="េ" android:keyWidth="7.69%p" />
+        <Key android:codes="6042" android:keyLabel="រ" android:keyWidth="7.69%p" />
+        <Key android:codes="6031" android:keyLabel="ត" android:keyWidth="7.69%p" />
+        <Key android:codes="6041" android:keyLabel="យ" android:keyWidth="7.69%p" />
+        <Key android:codes="6075" android:keyLabel="ុ" android:keyWidth="7.69%p" />
+        <Key android:codes="6071" android:keyLabel="ិ" android:keyWidth="7.69%p" />
+        <Key android:codes="6084" android:keyLabel="ោ" android:keyWidth="7.69%p" />
+        <Key android:codes="6037" android:keyLabel="ផ" android:keyWidth="7.69%p" />
+        <Key android:codes="6080" android:keyLabel="ៀ" android:keyWidth="7.69%p" />
+        <Key android:codes="6058" android:keyLabel="ឪ" android:keyWidth="7.69%p" />
+        <Key android:codes="6062" android:keyLabel="ឮ" android:keyWidth="7.69%p" />
     </Row>
     <Row>
-        <Key android:codes="6070" android:keyLabel="ា" />
-        <Key android:codes="6047" android:keyLabel="ស" />
-        <Key android:codes="6026" android:keyLabel="ដ" />
-        <Key android:codes="6032" android:keyLabel="ថ" />
-        <Key android:codes="6020" android:keyLabel="ង" />
-        <Key android:codes="6048" android:keyLabel="ហ" />
-        <Key android:codes="6098" android:keyLabel="្" />
-        <Key android:codes="6016" android:keyLabel="ក" />
-        <Key android:codes="6043" android:keyLabel="ល" />
-        <Key android:codes="6078" android:keyLabel="ើ" />
-        <Key android:codes="6091" android:keyLabel="់" />
+        <Key android:codes="6070" android:keyLabel="ា" android:keyWidth="9.09%p" />
+        <Key android:codes="6047" android:keyLabel="ស" android:keyWidth="9.09%p" />
+        <Key android:codes="6026" android:keyLabel="ដ" android:keyWidth="9.09%p" />
+        <Key android:codes="6032" android:keyLabel="ថ" android:keyWidth="9.09%p" />
+        <Key android:codes="6020" android:keyLabel="ង" android:keyWidth="9.09%p" />
+        <Key android:codes="6048" android:keyLabel="ហ" android:keyWidth="9.09%p" />
+        <Key android:codes="6098" android:keyLabel="្" android:keyWidth="9.09%p" />
+        <Key android:codes="6016" android:keyLabel="ក" android:keyWidth="9.09%p" />
+        <Key android:codes="6043" android:keyLabel="ល" android:keyWidth="9.09%p" />
+        <Key android:codes="6078" android:keyLabel="ើ" android:keyWidth="9.09%p" />
+        <Key android:codes="6091" android:keyLabel="់" android:keyWidth="9.09%p" />
     </Row>
     <Row>
-        <Key android:codes="-1" android:keyLabel="⇧" android:keyWidth="15%p" android:isModifier="true" android:isSticky="true" />
-        <Key android:codes="6027" android:keyLabel="ឋ" android:keyWidth="7.7%p" />
-        <Key android:codes="6017" android:keyLabel="ខ" android:keyWidth="7.7%p" />
-        <Key android:codes="6021" android:keyLabel="ច" android:keyWidth="7.7%p" />
-        <Key android:codes="6044" android:keyLabel="វ" android:keyWidth="7.7%p" />
-        <Key android:codes="6036" android:keyLabel="ប" android:keyWidth="7.7%p" />
-        <Key android:codes="6035" android:keyLabel="ន" android:keyWidth="7.7%p" />
-        <Key android:codes="6040" android:keyLabel="ម" android:keyWidth="7.7%p" />
-        <Key android:codes="6075" android:keyLabel="ុំ" android:keyOutputText="ុំ" android:keyWidth="7.7%p" />
-        <Key android:codes="6100" android:keyLabel="។" android:keyWidth="7.7%p" />
-        <Key android:codes="6090" android:keyLabel="៊" android:keyWidth="7.7%p" />
-        <Key android:codes="-5" android:keyLabel="⌫" android:keyWidth="15%p" android:isRepeatable="true" />
+        <Key android:codes="-1" android:keyLabel="⇧" android:keyWidth="12.00%p" android:isModifier="true" android:isSticky="true" />
+        <Key android:codes="6027" android:keyLabel="ឋ" android:keyWidth="7.60%p" />
+        <Key android:codes="6017" android:keyLabel="ខ" android:keyWidth="7.60%p" />
+        <Key android:codes="6021" android:keyLabel="ច" android:keyWidth="7.60%p" />
+        <Key android:codes="6044" android:keyLabel="វ" android:keyWidth="7.60%p" />
+        <Key android:codes="6036" android:keyLabel="ប" android:keyWidth="7.60%p" />
+        <Key android:codes="6035" android:keyLabel="ន" android:keyWidth="7.60%p" />
+        <Key android:codes="6040" android:keyLabel="ម" android:keyWidth="7.60%p" />
+        <Key android:codes="6075" android:keyLabel="ុំ" android:keyOutputText="ុំ" android:keyWidth="7.60%p" />
+        <Key android:codes="6100" android:keyLabel="។" android:keyWidth="7.60%p" />
+        <Key android:codes="6090" android:keyLabel="៊" android:keyWidth="7.60%p" />
+        <Key android:codes="-5" android:keyLabel="⌫" android:keyWidth="12.00%p" android:isRepeatable="true" />
     </Row>
     <Row android:rowEdgeFlags="bottom">
         <Key android:codes="-2" android:keyLabel="ABC" android:keyWidth="20%p" />

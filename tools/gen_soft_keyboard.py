@@ -9,7 +9,7 @@ the physical ones do and the five two-code-point vowels are typed in full here
 too (via android:keyOutputText, which a key character map has no equivalent of).
 """
 
-import json, os
+import json, os, re
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -78,32 +78,61 @@ def special(code, label, width, extra=''):
         attrs.append(extra)
     return '        <Key %s />\n' % ' '.join(attrs)
 
+SHIFT_WIDTH = 12.0      # per cent of the row width, for shift and backspace
+
+
 def build(rows, language_label):
     out = [HEADER]
+
+    # Rows differ in length, so share each row's width out across its own keys.
+    # Leaving this to the keyboard-level default silently overflows: 13 keys at
+    # the default 10%p is 130% of the screen, and the last keys render off the
+    # right edge where they cannot be typed.
     for row in rows[:3]:
+        width = '%.2f%%p' % (100.0 / len(row))
         out.append('    <Row>\n')
         for label in row:
-            out.append(key(label))
+            out.append(key(label, width=width))
         out.append('    </Row>\n')
 
     # Letters row, wrapped by shift and backspace.
+    width = '%.2f%%p' % ((100.0 - 2 * SHIFT_WIDTH) / len(rows[3]))
     out.append('    <Row>\n')
-    out.append(special(KEYCODE_SHIFT, '⇧', '15%p',
+    out.append(special(KEYCODE_SHIFT, '\u21e7', '%.2f%%p' % SHIFT_WIDTH,
                        'android:isModifier="true" android:isSticky="true"'))
     for label in rows[3]:
-        out.append(key(label, width='7.7%p'))
-    out.append(special(KEYCODE_DELETE, '⌫', '15%p', 'android:isRepeatable="true"'))
+        out.append(key(label, width=width))
+    out.append(special(KEYCODE_DELETE, '\u232b', '%.2f%%p' % SHIFT_WIDTH,
+                       'android:isRepeatable="true"'))
     out.append('    </Row>\n')
 
     # Function row.
     out.append('    <Row android:rowEdgeFlags="bottom">\n')
     out.append(special(KEYCODE_MODE_CHANGE, language_label, '20%p'))
     out.append(key(' ', width='50%p'))
-    out.append(special(KEYCODE_DONE, '⏎', '30%p'))
+    out.append(special(KEYCODE_DONE, '\u23ce', '30%p'))
     out.append('    </Row>\n')
 
     out.append('</Keyboard>\n')
-    return ''.join(out)
+    body = ''.join(out)
+    check_rows_fit(body)
+    return body
+
+
+def check_rows_fit(body):
+    """Every row must total at most 100% of the screen, or keys fall off it."""
+    for number, row in enumerate(re.findall(r'<Row[^>]*>(.*?)</Row>', body, re.S), 1):
+        widths = re.findall(r'keyWidth="([\d.]+)%p"', row)
+        keys = len(re.findall(r'<Key ', row))
+        if len(widths) != keys:
+            raise AssertionError('row %d: %d keys but %d have an explicit width; '
+                                 'the rest fall back to the keyboard default'
+                                 % (number, keys, len(widths)))
+        total = sum(float(w) for w in widths)
+        if total > 100.5:
+            raise AssertionError('row %d: keys total %.2f%% of the screen width'
+                                 % (number, total))
+
 
 def khmer_rows(layer):
     rows = []
