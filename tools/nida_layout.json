@@ -1,0 +1,284 @@
+{
+ "K": {
+  "base": "ក",
+  "shift": "គ",
+  "ralt": "ឝ",
+  "shift+ralt": "᧳"
+ },
+ "X": {
+  "base": "ខ",
+  "shift": "ឃ",
+  "ralt": ">",
+  "shift+ralt": "᧸"
+ },
+ "G": {
+  "base": "ង",
+  "shift": "អ",
+  "ralt": ":",
+  "shift+ralt": "᧰"
+ },
+ "C": {
+  "base": "ច",
+  "shift": "ជ",
+  "ralt": "#",
+  "shift+ralt": "᧹"
+ },
+ "Q": {
+  "base": "ឆ",
+  "shift": "ឈ",
+  "ralt": "ៜ",
+  "shift+ralt": "᧠"
+ },
+ "J": {
+  "shift": "ញ",
+  "base": "្",
+  "ralt": "’",
+  "shift+ralt": "᧲"
+ },
+ "D": {
+  "base": "ដ",
+  "shift": "ឌ",
+  "ralt": "×",
+  "shift+ralt": "᧮"
+ },
+ "Z": {
+  "base": "ឋ",
+  "shift": "ឍ",
+  "ralt": "<",
+  "shift+ralt": "᧷"
+ },
+ "N": {
+  "shift": "ណ",
+  "base": "ន",
+  "ralt": ";",
+  "shift+ralt": "᧼"
+ },
+ "T": {
+  "base": "ត",
+  "shift": "ទ",
+  "ralt": "ឨ",
+  "shift+ralt": "᧤"
+ },
+ "F": {
+  "base": "ថ",
+  "shift": "ធ",
+  "ralt": "÷",
+  "shift+ralt": "᧯"
+ },
+ "B": {
+  "base": "ប",
+  "shift": "ព",
+  "ralt": "ឞ",
+  "shift+ralt": "᧻"
+ },
+ "P": {
+  "base": "ផ",
+  "shift": "ភ",
+  "ralt": "ឰ",
+  "shift+ralt": "᧩"
+ },
+ "M": {
+  "base": "ម",
+  "shift": "ំ",
+  "ralt": "៓",
+  "shift+ralt": "᧽"
+ },
+ "Y": {
+  "base": "យ",
+  "shift": "ួ",
+  "ralt": "[",
+  "shift+ralt": "᧥"
+ },
+ "R": {
+  "base": "រ",
+  "ralt": "ឫ",
+  "shift": "ឬ",
+  "shift+ralt": "᧣"
+ },
+ "L": {
+  "base": "ល",
+  "shift": "ឡ",
+  "ralt": "៘",
+  "shift+ralt": "᧴"
+ },
+ "V": {
+  "base": "វ",
+  "ralt": "&",
+  "shift+ralt": "᧺",
+  "shift": "េះ"
+ },
+ "S": {
+  "base": "ស",
+  "shift": "ៃ",
+  "ralt": "-",
+  "shift+ralt": "᧭"
+ },
+ "H": {
+  "base": "ហ",
+  "shift": "ះ",
+  "ralt": "‘",
+  "shift+ralt": "᧱"
+ },
+ "A": {
+  "base": "ា",
+  "ralt": "+",
+  "shift+ralt": "᧬",
+  "shift": "ាំ"
+ },
+ "I": {
+  "base": "ិ",
+  "shift": "ី",
+  "ralt": "ឦ",
+  "shift+ralt": "᧧"
+ },
+ "W": {
+  "base": "ឹ",
+  "shift": "ឺ",
+  "ralt": "៝",
+  "shift+ralt": "᧡"
+ },
+ "U": {
+  "base": "ុ",
+  "shift": "ូ",
+  "ralt": "]",
+  "shift+ralt": "᧦"
+ },
+ "SEMICOLON": {
+  "base": "ើ",
+  "ralt": "៖",
+  "shift+ralt": "᧵",
+  "shift": "ោះ"
+ },
+ "LEFT_BRACKET": {
+  "shift": "ឿ",
+  "base": "ៀ",
+  "ralt": "ឩ",
+  "shift+ralt": "᧪"
+ },
+ "E": {
+  "base": "េ",
+  "shift": "ែ",
+  "ralt": "ឯ",
+  "shift+ralt": "᧢"
+ },
+ "O": {
+  "base": "ោ",
+  "shift": "ៅ",
+  "ralt": "ឱ",
+  "shift+ralt": "᧨"
+ },
+ "APOSTROPHE": {
+  "ralt": "ៈ",
+  "base": "់",
+  "shift": "៉",
+  "shift+ralt": "᧶"
+ },
+ "MINUS": {
+  "base": "ឥ",
+  "shift": "៌",
+  "ralt": "≈"
+ },
+ "RIGHT_BRACKET": {
+  "shift": "ឧ",
+  "base": "ឪ",
+  "ralt": "ឳ",
+  "shift+ralt": "᧫"
+ },
+ "BACKSLASH": {
+  "shift": "ឭ",
+  "base": "ឮ",
+  "ralt": "\\"
+ },
+ "EQUALS": {
+  "base": "ឲ",
+  "ralt": "៎",
+  "shift": "="
+ },
+ "7": {
+  "shift": "័",
+  "ralt": "៚",
+  "base": "៧",
+  "shift+ralt": "៷"
+ },
+ "8": {
+  "shift": "៏",
+  "ralt": "*",
+  "base": "៨",
+  "shift+ralt": "៸"
+ },
+ "6": {
+  "shift": "៍",
+  "ralt": "៙",
+  "base": "៦",
+  "shift+ralt": "៶"
+ },
+ "3": {
+  "ralt": "៑",
+  "shift": "\"",
+  "base": "៣",
+  "shift+ralt": "៳"
+ },
+ "SLASH": {
+  "base": "៊",
+  "shift": "?",
+  "ralt": "/"
+ },
+ "PERIOD": {
+  "base": "។",
+  "shift": "៕",
+  "ralt": ".",
+  "shift+ralt": "᧿"
+ },
+ "2": {
+  "shift": "ៗ",
+  "ralt": "@",
+  "base": "២",
+  "shift+ralt": "៲"
+ },
+ "GRAVE": {
+  "base": "«",
+  "shift": "»",
+  "ralt": "‍"
+ },
+ "9": {
+  "shift": "(",
+  "ralt": "{",
+  "base": "៩",
+  "shift+ralt": "៹"
+ },
+ "0": {
+  "shift": ")",
+  "ralt": "}",
+  "base": "០",
+  "shift+ralt": "៰"
+ },
+ "1": {
+  "shift": "!",
+  "ralt": "‌",
+  "base": "១",
+  "shift+ralt": "៱"
+ },
+ "5": {
+  "shift": "%",
+  "ralt": "€",
+  "base": "៥",
+  "shift+ralt": "៵"
+ },
+ "COMMA": {
+  "ralt": ",",
+  "shift+ralt": "᧾",
+  "base": "ុំ",
+  "shift": "ុះ"
+ },
+ "4": {
+  "shift": "៛",
+  "ralt": "$",
+  "base": "៤",
+  "shift+ralt": "៴"
+ },
+ "SPACE": {
+  "base": "​",
+  "shift": " ",
+  "ralt": " "
+ }
+}

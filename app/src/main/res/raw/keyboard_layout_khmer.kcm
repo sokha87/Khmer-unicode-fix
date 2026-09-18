@@ -15,339 +15,399 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Modified: fixed invalid code points (U+17FB-17FF), Shift+G = U+17A2,
-# added missing Khmer characters on Right-Alt.
+# Khmer NiDA layout, matching the desktop (Windows KBDKNI / NiDA) keyboard.
 #
-# NOTE ON THE NiDA TWO-CODE-POINT KEYS (Shift+A and Shift+COMMA)
+# Generated from the key tables of SIL's NiDA-based Khmer Angkor keyboard;
+# regenerate with tools/gen_kcm.py. Every base, shift, right-alt and
+# shift+right-alt position of the desktop layout is reproduced here, except
+# for the five keys noted below.
 #
-# The NiDA layout puts two *sequences* on the shift layer:
-#     Shift+A     -> U+17B6 U+17C6   (SARA AA + NIKAHIT)
-#     Shift+COMMA -> U+17BB U+17C6   (SARA U  + NIKAHIT)
+# THE FIVE TWO-CODE-POINT KEYS
 #
-# An Android .kcm behavior can only ever be ONE UTF-16 code unit: the
-# platform parser (KeyCharacterMap.cpp, parseCharacterLiteral) reads a
-# single character between the quotes, and parseKeyProperty rejects a
-# second literal with "Cannot combine multiple character literals".
-# Writing '\u17b6\u17c6' makes the WHOLE file fail to load, which silently
-# drops the layout back to Generic.kcm.
+# NiDA puts vowel *sequences* on five positions:
 #
-# So the shift layer below carries the FIRST code point of each sequence
-# (the NiDA leading character); press Shift+M (U+17C6 NIKAHIT) to complete
-# the cluster. Enable the bundled "Khmer Unicode sequence keys" input
-# method to get both sequences from the single keystroke instead.
+#     COMMA           ->  U+17BB U+17C6   (SARA U  + NIKAHIT)   OM
+#     SHIFT+COMMA     ->  U+17BB U+17C7   (SARA U  + REAHMUK)   OH
+#     SHIFT+A         ->  U+17B6 U+17C6   (SARA AA + NIKAHIT)   AM
+#     SHIFT+V         ->  U+17C1 U+17C7   (SARA E  + REAHMUK)   EH
+#     SHIFT+SEMICOLON ->  U+17C4 U+17C7   (SARA OO + REAHMUK)   OAH
 #
-# The ASCII characters that previously sat in those two slots are kept:
-#   '+' moved to Shift+RightAlt+A, ';' moved to RightAlt+COMMA
-#       (RightAlt+COMMA previously repeated ',' , which base already types).
+# An Android key character map behavior is a single UTF-16 code unit:
+# KeyCharacterMap.cpp's parseCharacterLiteral reads one character and then
+# requires the closing quote, and parseKeyProperty rejects a second literal
+# with "Cannot combine multiple character literals". A two-code-point literal
+# is a parse ERROR, and one bad key block makes Android discard this whole
+# file and silently fall back to Generic.kcm. Unicode has no precomposed form
+# for any of the five.
+#
+# Those five positions therefore carry the FIRST code point of the sequence
+# here; press SHIFT+M (U+17C6 NIKAHIT) or SHIFT+H (U+17C7 REAHMUK) to finish
+# the cluster. Enable the bundled "Khmer Unicode sequence keys" input method
+# to get all five as a single keystroke, exactly like the desktop layout.
 
 type OVERLAY
 
 #
-# Number Row Character Key
+# Number row
 #
 
 key 1 {
     label:                              '1'
-    base:                               '\u17e1'
-    shift:                              '!'
-    ralt:                               '\u200c'
+    base:                               '\u17e1'     # KHMER DIGIT ONE
+    shift:                              '!'          # EXCLAMATION MARK
+    ralt:                               '\u200c'     # ZERO WIDTH NON-JOINER
+    shift+ralt:                         '\u17f1'     # KHMER SYMBOL LEK ATTAK MUOY
 }
 key 2 {
     label:                              '2'
-    base:                               '\u17e2'
-    shift:                              '\u17d7'
-    ralt:                               '@'
+    base:                               '\u17e2'     # KHMER DIGIT TWO
+    shift:                              '\u17d7'     # KHMER SIGN LEK TOO
+    ralt:                               '@'          # COMMERCIAL AT
+    shift+ralt:                         '\u17f2'     # KHMER SYMBOL LEK ATTAK PII
 }
 key 3 {
     label:                              '3'
-    base:                               '\u17e3'
-    shift:                              '#'
-    ralt:                               '\u17d1'
+    base:                               '\u17e3'     # KHMER DIGIT THREE
+    shift:                              '"'          # QUOTATION MARK
+    ralt:                               '\u17d1'     # KHMER SIGN VIRIAM
+    shift+ralt:                         '\u17f3'     # KHMER SYMBOL LEK ATTAK BEI
 }
 key 4 {
     label:                              '4'
-    base:                               '\u17e4'
-    shift:                              '\u17db'
-    ralt:                               '$'
+    base:                               '\u17e4'     # KHMER DIGIT FOUR
+    shift:                              '\u17db'     # KHMER CURRENCY SYMBOL RIEL
+    ralt:                               '$'          # DOLLAR SIGN
+    shift+ralt:                         '\u17f4'     # KHMER SYMBOL LEK ATTAK BUON
 }
 key 5 {
     label:                              '5'
-    base:                               '\u17e5'
-    shift:                              '%'
-    ralt:                               '\u20ac'
+    base:                               '\u17e5'     # KHMER DIGIT FIVE
+    shift:                              '%'          # PERCENT SIGN
+    ralt:                               '\u20ac'     # EURO SIGN
+    shift+ralt:                         '\u17f5'     # KHMER SYMBOL LEK ATTAK PRAM
 }
 key 6 {
     label:                              '6'
-    base:                               '\u17e6'
-    shift:                              '\u17cd'
-    ralt:                               '\u17d9'
+    base:                               '\u17e6'     # KHMER DIGIT SIX
+    shift:                              '\u17cd'     # KHMER SIGN TOANDAKHIAT
+    ralt:                               '\u17d9'     # KHMER SIGN PHNAEK MUAN
+    shift+ralt:                         '\u17f6'     # KHMER SYMBOL LEK ATTAK PRAM-MUOY
 }
 key 7 {
     label:                              '7'
-    base:                               '\u17e7'
-    shift:                              '\u17d0'
-    ralt:                               '\u17da'
+    base:                               '\u17e7'     # KHMER DIGIT SEVEN
+    shift:                              '\u17d0'     # KHMER SIGN SAMYOK SANNYA
+    ralt:                               '\u17da'     # KHMER SIGN KOOMUUT
+    shift+ralt:                         '\u17f7'     # KHMER SYMBOL LEK ATTAK PRAM-PII
 }
 key 8 {
     label:                              '8'
-    base:                               '\u17e8'
-    shift:                              '\u17cf'
-    ralt:                               '*'
+    base:                               '\u17e8'     # KHMER DIGIT EIGHT
+    shift:                              '\u17cf'     # KHMER SIGN AHSDA
+    ralt:                               '*'          # ASTERISK
+    shift+ralt:                         '\u17f8'     # KHMER SYMBOL LEK ATTAK PRAM-BEI
 }
 key 9 {
     label:                              '9'
-    base:                               '\u17e9'
-    shift:                              '('
-    ralt:                               '{'
+    base:                               '\u17e9'     # KHMER DIGIT NINE
+    shift:                              '('          # LEFT PARENTHESIS
+    ralt:                               '{'          # LEFT CURLY BRACKET
+    shift+ralt:                         '\u17f9'     # KHMER SYMBOL LEK ATTAK PRAM-BUON
 }
 key 0 {
     label:                              '0'
-    base:                               '\u17e0'
-    shift:                              ')'
-    ralt:                               '}'
+    base:                               '\u17e0'     # KHMER DIGIT ZERO
+    shift:                              ')'          # RIGHT PARENTHESIS
+    ralt:                               '}'          # RIGHT CURLY BRACKET
+    shift+ralt:                         '\u17f0'     # KHMER SYMBOL LEK ATTAK SON
 }
 
 #
-# Default QWERTY A-Z Character Key
+# QWERTY letters
 #
 
-key A {
-    label:                              'A'
-    base:                               '\u17b6'
-    # NiDA Shift+A is the sequence U+17B6 U+17C6 (SARA AM); a .kcm can only
-    # emit the first code point. Shift+M adds U+17C6 to complete it.
-    shift:                              '\u17b6'
-    ralt:                               '^'
-    shift+ralt:                         '+'
-}
-key B {
-    label:                              'B'
-    base:                               '\u1794'
-    shift:                              '\u1796'
-    ralt:                               '\u179e'
-}
-key C {
-    label:                              'C'
-    base:                               '\u1785'
-    shift:                              '\u1787'
-}
-key D {
-    label:                              'D'
-    base:                               '\u178a'
-    shift:                              '\u178c'
-}
-key E {
-    label:                              'E'
-    base:                               '\u17c1'
-    shift:                              '\u17c2'
-    ralt:                               '\u17af'
-}
-key F {
-    label:                              'F'
-    base:                               '\u1790'
-    shift:                              '\u1792'
-}
-key G {
-    label:                              'G'
-    base:                               '\u1784'
-    shift:                              '\u17a2'
-    ralt:                               '\u17a3'
-}
-key H {
-    label:                              'H'
-    base:                               '\u17a0'
-    shift:                              '\u17c7'
-}
-key I {
-    label:                              'I'
-    base:                               '\u17b7'
-    shift:                              '\u17b8'
-    ralt:                               '\u17a6'
-}
-key J {
-    label:                              'J'
-    base:                               '\u17d2'
-    shift:                              '\u1789'
-}
-key K {
-    label:                              'K'
-    base:                               '\u1780'
-    shift:                              '\u1782'
-    ralt:                               '\u179d'
-}
-key L {
-    label:                              'L'
-    base:                               '\u179b'
-    shift:                              '\u17a1'
-    ralt:                               '\u17d8'
-}
-key M {
-    label:                              'M'
-    base:                               '\u1798'
-    shift:                              '\u17c6'
-}
-key N {
-    label:                              'N'
-    base:                               '\u1793'
-    shift:                              '\u178e'
-}
-key O {
-    label:                              'O'
-    base:                               '\u17c4'
-    shift:                              '\u17c5'
-    ralt:                               '\u17b1'
-}
-key P {
-    label:                              'P'
-    base:                               '\u1795'
-    shift:                              '\u1797'
-    ralt:                               '\u17b0'
-}
 key Q {
     label:                              'Q'
-    base:                               '\u1786'
-    shift:                              '\u1788'
-    ralt:                               '\u17dc'
-}
-key R {
-    label:                              'R'
-    base:                               '\u179a'
-    shift:                              '\u17ac'
-    ralt:                               '\u17ab'
-}
-key S {
-    label:                              'S'
-    base:                               '\u179f'
-    shift:                              '\u17c3'
-}
-key T {
-    label:                              'T'
-    base:                               '\u178f'
-    shift:                              '\u1791'
-    ralt:                               '\u17a8'
-}
-key U {
-    label:                              'U'
-    base:                               '\u17bb'
-    shift:                              '\u17bc'
-    ralt:                               ']'
-}
-key V {
-    label:                              'V'
-    base:                               '\u179c'
-    shift:                              '&'
+    base:                               '\u1786'     # KHMER LETTER CHA
+    shift:                              '\u1788'     # KHMER LETTER CHO
+    ralt:                               '\u17dc'     # KHMER SIGN AVAKRAHASANYA
+    shift+ralt:                         '\u19e0'     # KHMER SYMBOL PATHAMASAT
 }
 key W {
     label:                              'W'
-    base:                               '\u17b9'
-    shift:                              '\u17ba'
-    ralt:                               '\u17dd'
+    base:                               '\u17b9'     # KHMER VOWEL SIGN Y
+    shift:                              '\u17ba'     # KHMER VOWEL SIGN YY
+    ralt:                               '\u17dd'     # KHMER SIGN ATTHACAN
+    shift+ralt:                         '\u19e1'     # KHMER SYMBOL MUOY KOET
 }
-key X {
-    label:                              'X'
-    base:                               '\u1781'
-    shift:                              '\u1783'
-    ralt:                               '>'
+key E {
+    label:                              'E'
+    base:                               '\u17c1'     # KHMER VOWEL SIGN E
+    shift:                              '\u17c2'     # KHMER VOWEL SIGN AE
+    ralt:                               '\u17af'     # KHMER INDEPENDENT VOWEL QE
+    shift+ralt:                         '\u19e2'     # KHMER SYMBOL PII KOET
+}
+key R {
+    label:                              'R'
+    base:                               '\u179a'     # KHMER LETTER RO
+    shift:                              '\u17ac'     # KHMER INDEPENDENT VOWEL RYY
+    ralt:                               '\u17ab'     # KHMER INDEPENDENT VOWEL RY
+    shift+ralt:                         '\u19e3'     # KHMER SYMBOL BEI KOET
+}
+key T {
+    label:                              'T'
+    base:                               '\u178f'     # KHMER LETTER TA
+    shift:                              '\u1791'     # KHMER LETTER TO
+    ralt:                               '\u17a8'     # KHMER INDEPENDENT VOWEL QUK
+    shift+ralt:                         '\u19e4'     # KHMER SYMBOL BUON KOET
 }
 key Y {
     label:                              'Y'
-    base:                               '\u1799'
-    shift:                              '\u17bd'
-    ralt:                               '['
+    base:                               '\u1799'     # KHMER LETTER YO
+    shift:                              '\u17bd'     # KHMER VOWEL SIGN UA
+    ralt:                               '['          # LEFT SQUARE BRACKET
+    shift+ralt:                         '\u19e5'     # KHMER SYMBOL PRAM KOET
+}
+key U {
+    label:                              'U'
+    base:                               '\u17bb'     # KHMER VOWEL SIGN U
+    shift:                              '\u17bc'     # KHMER VOWEL SIGN UU
+    ralt:                               ']'          # RIGHT SQUARE BRACKET
+    shift+ralt:                         '\u19e6'     # KHMER SYMBOL PRAM-MUOY KOET
+}
+key I {
+    label:                              'I'
+    base:                               '\u17b7'     # KHMER VOWEL SIGN I
+    shift:                              '\u17b8'     # KHMER VOWEL SIGN II
+    ralt:                               '\u17a6'     # KHMER INDEPENDENT VOWEL QII
+    shift+ralt:                         '\u19e7'     # KHMER SYMBOL PRAM-PII KOET
+}
+key O {
+    label:                              'O'
+    base:                               '\u17c4'     # KHMER VOWEL SIGN OO
+    shift:                              '\u17c5'     # KHMER VOWEL SIGN AU
+    ralt:                               '\u17b1'     # KHMER INDEPENDENT VOWEL QOO TYPE ONE
+    shift+ralt:                         '\u19e8'     # KHMER SYMBOL PRAM-BEI KOET
+}
+key P {
+    label:                              'P'
+    base:                               '\u1795'     # KHMER LETTER PHA
+    shift:                              '\u1797'     # KHMER LETTER PHO
+    ralt:                               '\u17b0'     # KHMER INDEPENDENT VOWEL QAI
+    shift+ralt:                         '\u19e9'     # KHMER SYMBOL PRAM-BUON KOET
+}
+key A {
+    label:                              'A'
+    base:                               '\u17b6'     # KHMER VOWEL SIGN AA
+    # NiDA types ាំ (U+17B6 U+17C6) here; a .kcm holds only the first
+    # code point, so SHIFT+M completes the cluster.
+    shift:                              '\u17b6'     # KHMER VOWEL SIGN AA
+    ralt:                               '+'          # PLUS SIGN
+    shift+ralt:                         '\u19ec'     # KHMER SYMBOL DAP-PII KOET
+}
+key S {
+    label:                              'S'
+    base:                               '\u179f'     # KHMER LETTER SA
+    shift:                              '\u17c3'     # KHMER VOWEL SIGN AI
+    ralt:                               '-'          # HYPHEN-MINUS
+    shift+ralt:                         '\u19ed'     # KHMER SYMBOL DAP-BEI KOET
+}
+key D {
+    label:                              'D'
+    base:                               '\u178a'     # KHMER LETTER DA
+    shift:                              '\u178c'     # KHMER LETTER DO
+    ralt:                               '\u00d7'     # MULTIPLICATION SIGN
+    shift+ralt:                         '\u19ee'     # KHMER SYMBOL DAP-BUON KOET
+}
+key F {
+    label:                              'F'
+    base:                               '\u1790'     # KHMER LETTER THA
+    shift:                              '\u1792'     # KHMER LETTER THO
+    ralt:                               '\u00f7'     # DIVISION SIGN
+    shift+ralt:                         '\u19ef'     # KHMER SYMBOL DAP-PRAM KOET
+}
+key G {
+    label:                              'G'
+    base:                               '\u1784'     # KHMER LETTER NGO
+    shift:                              '\u17a2'     # KHMER LETTER QA
+    ralt:                               ':'          # COLON
+    shift+ralt:                         '\u19f0'     # KHMER SYMBOL TUTEYASAT
+}
+key H {
+    label:                              'H'
+    base:                               '\u17a0'     # KHMER LETTER HA
+    shift:                              '\u17c7'     # KHMER SIGN REAHMUK
+    ralt:                               '\u2018'     # LEFT SINGLE QUOTATION MARK
+    shift+ralt:                         '\u19f1'     # KHMER SYMBOL MUOY ROC
+}
+key J {
+    label:                              'J'
+    base:                               '\u17d2'     # KHMER SIGN COENG
+    shift:                              '\u1789'     # KHMER LETTER NYO
+    ralt:                               '\u2019'     # RIGHT SINGLE QUOTATION MARK
+    shift+ralt:                         '\u19f2'     # KHMER SYMBOL PII ROC
+}
+key K {
+    label:                              'K'
+    base:                               '\u1780'     # KHMER LETTER KA
+    shift:                              '\u1782'     # KHMER LETTER KO
+    ralt:                               '\u179d'     # KHMER LETTER SHA
+    shift+ralt:                         '\u19f3'     # KHMER SYMBOL BEI ROC
+}
+key L {
+    label:                              'L'
+    base:                               '\u179b'     # KHMER LETTER LO
+    shift:                              '\u17a1'     # KHMER LETTER LA
+    ralt:                               '\u17d8'     # KHMER SIGN BEYYAL
+    shift+ralt:                         '\u19f4'     # KHMER SYMBOL BUON ROC
 }
 key Z {
     label:                              'Z'
-    base:                               '\u178b'
-    shift:                              '\u178d'
-    ralt:                               '<'
+    base:                               '\u178b'     # KHMER LETTER TTHA
+    shift:                              '\u178d'     # KHMER LETTER TTHO
+    ralt:                               '<'          # LESS-THAN SIGN
+    shift+ralt:                         '\u19f7'     # KHMER SYMBOL PRAM-PII ROC
+}
+key X {
+    label:                              'X'
+    base:                               '\u1781'     # KHMER LETTER KHA
+    shift:                              '\u1783'     # KHMER LETTER KHO
+    ralt:                               '>'          # GREATER-THAN SIGN
+    shift+ralt:                         '\u19f8'     # KHMER SYMBOL PRAM-BEI ROC
+}
+key C {
+    label:                              'C'
+    base:                               '\u1785'     # KHMER LETTER CA
+    shift:                              '\u1787'     # KHMER LETTER CO
+    ralt:                               '#'          # NUMBER SIGN
+    shift+ralt:                         '\u19f9'     # KHMER SYMBOL PRAM-BUON ROC
+}
+key V {
+    label:                              'V'
+    base:                               '\u179c'     # KHMER LETTER VO
+    # NiDA types េះ (U+17C1 U+17C7) here; a .kcm holds only the first
+    # code point, so SHIFT+H completes the cluster.
+    shift:                              '\u17c1'     # KHMER VOWEL SIGN E
+    ralt:                               '&'          # AMPERSAND
+    shift+ralt:                         '\u19fa'     # KHMER SYMBOL DAP ROC
+}
+key B {
+    label:                              'B'
+    base:                               '\u1794'     # KHMER LETTER BA
+    shift:                              '\u1796'     # KHMER LETTER PO
+    ralt:                               '\u179e'     # KHMER LETTER SSO
+    shift+ralt:                         '\u19fb'     # KHMER SYMBOL DAP-MUOY ROC
+}
+key N {
+    label:                              'N'
+    base:                               '\u1793'     # KHMER LETTER NO
+    shift:                              '\u178e'     # KHMER LETTER NNO
+    ralt:                               ';'          # SEMICOLON
+    shift+ralt:                         '\u19fc'     # KHMER SYMBOL DAP-PII ROC
+}
+key M {
+    label:                              'M'
+    base:                               '\u1798'     # KHMER LETTER MO
+    shift:                              '\u17c6'     # KHMER SIGN NIKAHIT
+    ralt:                               '\u17d3'     # KHMER SIGN BATHAMASAT
+    shift+ralt:                         '\u19fd'     # KHMER SYMBOL DAP-BEI ROC
 }
 
 #
-# Special Character Key
+# Punctuation and other printing keys
 #
 
-# Within Number Row Key
 key GRAVE {
     label:                              '`'
-    base:                               '\u00AB'
-    shift:                              '\u00BB'
-    ralt:                               '\u200d'
+    base:                               '\u00ab'     # LEFT-POINTING DOUBLE ANGLE QUOTATION MARK
+    shift:                              '\u00bb'     # RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK
+    ralt:                               '\u200d'     # ZERO WIDTH JOINER
 }
 key MINUS {
     label:                              '-'
-    base:                               '\u17a5'
-    shift:                              '\u17cc'
+    base:                               '\u17a5'     # KHMER INDEPENDENT VOWEL QI
+    shift:                              '\u17cc'     # KHMER SIGN ROBAT
+    ralt:                               '\u2248'     # ALMOST EQUAL TO
 }
 key EQUALS {
     label:                              '='
-    base:                               '\u17b2'
-    shift:                              '='
-    ralt:                               '\u17ce'
+    base:                               '\u17b2'     # KHMER INDEPENDENT VOWEL QOO TYPE TWO
+    shift:                              '='          # EQUALS SIGN
+    ralt:                               '\u17ce'     # KHMER SIGN KAKABAT
 }
 key BACKSLASH {
     label:                              '\\'
-    base:                               '\u17ae'
-    shift:                              '\u17ad'
-    ralt:                               '\\'
+    base:                               '\u17ae'     # KHMER INDEPENDENT VOWEL LYY
+    shift:                              '\u17ad'     # KHMER INDEPENDENT VOWEL LY
+    ralt:                               '\\'         # REVERSE SOLIDUS
 }
-
-# Within QWERTY Key
 key LEFT_BRACKET {
     label:                              '['
-    base:                               '\u17c0'
-    shift:                              '\u17bf'
-    ralt:                               '\u17a9'
+    base:                               '\u17c0'     # KHMER VOWEL SIGN IE
+    shift:                              '\u17bf'     # KHMER VOWEL SIGN YA
+    ralt:                               '\u17a9'     # KHMER INDEPENDENT VOWEL QUU
+    shift+ralt:                         '\u19ea'     # KHMER SYMBOL DAP KOET
 }
-
 key RIGHT_BRACKET {
     label:                              ']'
-    base:                               '\u17aa'
-    shift:                              '\u17a7'
-    ralt:                               '\u17b3'
+    base:                               '\u17aa'     # KHMER INDEPENDENT VOWEL QUUV
+    shift:                              '\u17a7'     # KHMER INDEPENDENT VOWEL QU
+    ralt:                               '\u17b3'     # KHMER INDEPENDENT VOWEL QAU
+    shift+ralt:                         '\u19eb'     # KHMER SYMBOL DAP-MUOY KOET
 }
 key SEMICOLON {
     label:                              ';'
-    base:                               '\u17be'
-    shift:                              ':'
-    ralt:                               '\u17d6'
+    base:                               '\u17be'     # KHMER VOWEL SIGN OE
+    # NiDA types ោះ (U+17C4 U+17C7) here; a .kcm holds only the first
+    # code point, so SHIFT+H completes the cluster.
+    shift:                              '\u17c4'     # KHMER VOWEL SIGN OO
+    ralt:                               '\u17d6'     # KHMER SIGN CAMNUC PII KUUH
+    shift+ralt:                         '\u19f5'     # KHMER SYMBOL PRAM ROC
 }
 key APOSTROPHE {
     label:                              '\''
-    base:                               '\u17cb'
-    shift:                              '\u17c9'
-    ralt:                               '\u17c8'
+    base:                               '\u17cb'     # KHMER SIGN BANTOC
+    shift:                              '\u17c9'     # KHMER SIGN MUUSIKATOAN
+    ralt:                               '\u17c8'     # KHMER SIGN YUUKALEAPINTU
+    shift+ralt:                         '\u19f6'     # KHMER SYMBOL PRAM-MUOY ROC
 }
 key COMMA {
     label:                              ','
-    base:                               ','
-    # NiDA Shift+COMMA is the sequence U+17BB U+17C6 (SARA OM); a .kcm can
-    # only emit the first code point. Shift+M adds U+17C6 to complete it.
-    shift:                              '\u17bb'
-    ralt:                               ';'
+    # NiDA types ុំ (U+17BB U+17C6) here; a .kcm holds only the first
+    # code point, so SHIFT+M completes the cluster.
+    base:                               '\u17bb'     # KHMER VOWEL SIGN U
+    # NiDA types ុះ (U+17BB U+17C7) here; a .kcm holds only the first
+    # code point, so SHIFT+H completes the cluster.
+    shift:                              '\u17bb'     # KHMER VOWEL SIGN U
+    ralt:                               ','          # COMMA
+    shift+ralt:                         '\u19fe'     # KHMER SYMBOL DAP-BUON ROC
 }
 key PERIOD {
     label:                              '.'
-    base:                               '\u17d4'
-    shift:                              '\u17d5'
-    ralt:                               '.'
+    base:                               '\u17d4'     # KHMER SIGN KHAN
+    shift:                              '\u17d5'     # KHMER SIGN BARIYOOSAN
+    ralt:                               '.'          # FULL STOP
+    shift+ralt:                         '\u19ff'     # KHMER SYMBOL DAP-PRAM ROC
 }
 key SLASH {
     label:                              '/'
-    base:                               '\u17ca'
-    shift:                              '?'
-    ralt:                               '/'
+    base:                               '\u17ca'     # KHMER SIGN TRIISAP
+    shift:                              '?'          # QUESTION MARK
+    ralt:                               '/'          # SOLIDUS
     alt, meta:                          fallback SEARCH
     ctrl:                               fallback LANGUAGE_SWITCH
 }
 key SPACE {
     label:                              ' '
-    base:                               '\u200b'
-    shift:                              ' '
+    base:                               '\u200b'     # ZERO WIDTH SPACE
+    shift:                              ' '          # SPACE
+    ralt:                               '\u00a0'     # NO-BREAK SPACE
     alt, meta:                          fallback SEARCH
     ctrl:                               fallback LANGUAGE_SWITCH
 }
 
 ### Non-printing keys
+
 key ESCAPE {
     base:                               fallback BACK
     alt, meta:                          fallback HOME

@@ -6,41 +6,51 @@ import android.view.View;
 import android.view.inputmethod.InputConnection;
 
 /**
- * Types the two NiDA keys that the .kcm layout physically cannot express.
+ * Types the five NiDA keys that a key character map physically cannot express.
  *
- * <p>A key character map behavior is a single UTF-16 code unit: AOSP's
- * {@code KeyCharacterMap.cpp} parses exactly one character between the quotes and
- * rejects a second literal with "Cannot combine multiple character literals".
- * Two NiDA keys are two-code-point sequences, so they have no valid .kcm form:
+ * <p>An Android .kcm behavior is a single UTF-16 code unit: AOSP's
+ * {@code KeyCharacterMap.cpp} parses one character between the quotes and rejects
+ * a second literal with "Cannot combine multiple character literals". Five NiDA
+ * positions are two-code-point vowel sequences, and Unicode has no precomposed
+ * form for any of them, so the layout file carries only their first code point.
+ * This service commits them in full, matching the desktop NiDA keyboard.
  *
- * <ul>
- *   <li>Shift+A     &rarr; U+17B6 U+17C6 (SARA AA + NIKAHIT, "SARA AM")</li>
- *   <li>Shift+COMMA &rarr; U+17BB U+17C6 (SARA U  + NIKAHIT, "SARA OM")</li>
- * </ul>
+ * <p>Every other key is left alone and falls through to the layout, which stays
+ * the single source of truth for the rest of the keyboard.
  *
- * <p>This service commits them in full. Every other key is left alone and falls
- * through to the normal layout, so the .kcm stays the single source of truth for
- * the rest of the keyboard.
- *
- * <p>It only has an effect while it is the selected input method. It draws no
- * on-screen keyboard, so it is meant for a device that has a physical keyboard
- * attached; see README.md.
+ * <p><b>Why each rule checks the character first.</b> One of the five is the
+ * <em>unshifted</em> comma. Blindly rewriting that key would turn an ordinary
+ * comma into a Khmer vowel whenever the user switched their physical keyboard to
+ * a Latin layout. So a rule fires only when the key currently produces the
+ * sequence's leading code point — which is true exactly when the Khmer layout is
+ * the active one. Under any other layout these keys behave normally.
  */
 public class KhmerSequenceInputMethodService extends InputMethodService {
 
-    /** NiDA Shift+A: KHMER VOWEL SIGN AA + KHMER SIGN NIKAHIT. */
-    private static final String SARA_AM = "ាំ";
+    private static final char NIKAHIT = 'ំ';   // ំ  completes -AM / -OM
+    private static final char REAHMUK = 'ះ';   // ះ  completes -AH / -OH
 
-    /** NiDA Shift+COMMA: KHMER VOWEL SIGN U + KHMER SIGN NIKAHIT. */
-    private static final String SARA_OM = "ុំ";
+    /** keyCode, shift required, the code point the layout gives, the full sequence. */
+    private static final Object[][] SEQUENCES = {
+            // NiDA: SHIFT+A  -> SARA AA + NIKAHIT
+            {KeyEvent.KEYCODE_A, Boolean.TRUE, 'ា', "ា" + NIKAHIT},
+            // NiDA: SHIFT+V  -> SARA E + REAHMUK
+            {KeyEvent.KEYCODE_V, Boolean.TRUE, 'េ', "េ" + REAHMUK},
+            // NiDA: SHIFT+;  -> SARA OO + REAHMUK
+            {KeyEvent.KEYCODE_SEMICOLON, Boolean.TRUE, 'ោ', "ោ" + REAHMUK},
+            // NiDA: ,        -> SARA U + NIKAHIT
+            {KeyEvent.KEYCODE_COMMA, Boolean.FALSE, 'ុ', "ុ" + NIKAHIT},
+            // NiDA: SHIFT+,  -> SARA U + REAHMUK
+            {KeyEvent.KEYCODE_COMMA, Boolean.TRUE, 'ុ', "ុ" + REAHMUK},
+    };
 
-    /** Modifiers that must NOT be held, or we would steal a real shortcut. */
+    /** Modifiers that must not be held, or we would steal a real shortcut. */
     private static final int DISQUALIFYING_META =
             KeyEvent.META_CTRL_ON | KeyEvent.META_ALT_ON | KeyEvent.META_META_ON;
 
     @Override
     public View onCreateInputView() {
-        // Hardware-keyboard companion: there is deliberately no soft keyboard.
+        // Companion for a physical keyboard: there is deliberately no soft keyboard.
         return null;
     }
 
@@ -58,7 +68,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService {
 
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
-        // Swallow the matching up event so the key is not also handled downstream.
+        // Swallow the matching up event so the key is not handled twice.
         if (sequenceFor(keyCode, event) != null) {
             return true;
         }
@@ -66,23 +76,27 @@ public class KhmerSequenceInputMethodService extends InputMethodService {
     }
 
     /**
-     * @return the sequence this key should type, or {@code null} to let the
-     *         normal .kcm layout handle the key.
+     * @return the sequence this key should type, or {@code null} to let the layout
+     *         handle the key normally.
      */
     private String sequenceFor(int keyCode, KeyEvent event) {
-        if (event == null || !event.isShiftPressed()) {
+        if (event == null || (event.getMetaState() & DISQUALIFYING_META) != 0) {
             return null;
         }
-        if ((event.getMetaState() & DISQUALIFYING_META) != 0) {
-            return null;
+        boolean shift = event.isShiftPressed();
+        for (Object[] rule : SEQUENCES) {
+            if (((Integer) rule[0]).intValue() != keyCode) {
+                continue;
+            }
+            if (((Boolean) rule[1]).booleanValue() != shift) {
+                continue;
+            }
+            // Only act when the active layout really is the Khmer one.
+            if (event.getUnicodeChar() != ((Character) rule[2]).charValue()) {
+                continue;
+            }
+            return (String) rule[3];
         }
-        switch (keyCode) {
-            case KeyEvent.KEYCODE_A:
-                return SARA_AM;
-            case KeyEvent.KEYCODE_COMMA:
-                return SARA_OM;
-            default:
-                return null;
-        }
+        return null;
     }
 }
