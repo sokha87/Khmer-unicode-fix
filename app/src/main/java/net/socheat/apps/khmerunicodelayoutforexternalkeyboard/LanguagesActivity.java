@@ -158,7 +158,11 @@ public class LanguagesActivity extends Activity {
         out.append("Show anyway (checkbox above): ").append(forced ? "ON" : "off").append('\n');
 
         out.append("On-screen keyboard will: ")
-           .append(!physical || forced ? "SHOW" : "stay hidden").append("\n\n");
+           .append(!physical || forced ? "SHOW" : "stay hidden").append('\n');
+
+        out.append("Keyboard's last decision: ")
+           .append(prefs.getString(KhmerSequenceInputMethodService.PREF_LAST_DECISION,
+                                   "(this build has not run yet)")).append("\n\n");
 
         out.append("Attached input devices:\n");
         out.append(devices.length() == 0 ? "  (none)\n" : devices);

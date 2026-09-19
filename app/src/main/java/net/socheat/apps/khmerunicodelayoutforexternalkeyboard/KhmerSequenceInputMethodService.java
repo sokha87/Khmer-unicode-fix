@@ -67,6 +67,9 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     /** Show the on-screen keyboard even while a physical keyboard is attached. */
     static final String PREF_SHOW_WITH_HARD_KEYBOARD = "show_with_hard_keyboard";
 
+    /** The service's last visibility decision, reported by {@link LanguagesActivity}. */
+    static final String PREF_LAST_DECISION = "last_decision";
+
     private InputManager inputManager;
     private InputManager.InputDeviceListener deviceListener;
 
@@ -103,6 +106,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                 @Override
                 public void onInputDeviceAdded(int deviceId) {
                     updateInputViewShown();
+                    hideIfPhysicalKeyboard();
                 }
 
                 @Override
@@ -113,6 +117,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                 @Override
                 public void onInputDeviceChanged(int deviceId) {
                     updateInputViewShown();
+                    hideIfPhysicalKeyboard();
                 }
             };
             inputManager.registerInputDeviceListener(deviceListener, null);
@@ -174,6 +179,20 @@ public class KhmerSequenceInputMethodService extends InputMethodService
      */
     @Override
     public boolean onEvaluateInputViewShown() {
+        boolean shown = shouldShowOnScreenKeyboard();
+        // Leave a trace of the decision for LanguagesActivity to report. Without
+        // it there is no way to tell a service that decided "hide" and was
+        // overridden from one that never ran this code at all.
+        getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putString(PREF_LAST_DECISION, (shown ? "show" : "hide")
+                        + " (keyboard detected: " + (hasPhysicalKeyboard() ? "yes" : "no")
+                        + ", at " + android.text.format.DateFormat.format("HH:mm:ss",
+                                System.currentTimeMillis()) + ")")
+                .apply();
+        return shown;
+    }
+
+    private boolean shouldShowOnScreenKeyboard() {
         if (!hasPhysicalKeyboard()) {
             return true;
         }
@@ -196,6 +215,21 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         latinLayer = !isKhmerSubtype();
         shifted = false;
         applyKeyboard();
+        hideIfPhysicalKeyboard();
+    }
+
+    /**
+     * Asks to be dismissed when a physical keyboard is doing the typing.
+     *
+     * <p>{@link #onEvaluateInputViewShown()} should be enough on its own, and on
+     * a plain Android build it is. Some vendor shells show the input view
+     * regardless, so this asks the system directly to take the keyboard away
+     * rather than only answering when asked.
+     */
+    private void hideIfPhysicalKeyboard() {
+        if (!shouldShowOnScreenKeyboard() && isInputViewShown()) {
+            requestHideSelf(0);
+        }
     }
 
     @Override
