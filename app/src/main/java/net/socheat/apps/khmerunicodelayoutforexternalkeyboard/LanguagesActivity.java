@@ -6,9 +6,11 @@ import android.content.ComponentName;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.content.pm.PackageManager;
 import android.provider.Settings;
 import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.InputDevice;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -33,6 +35,8 @@ import android.widget.Toast;
  * implicit, locale-dependent defaults described in {@code res/xml/method.xml}.
  */
 public class LanguagesActivity extends Activity {
+
+    private TextView diagnostics;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -89,9 +93,76 @@ public class LanguagesActivity extends Activity {
             }
         }));
 
+        diagnostics = new TextView(this);
+        diagnostics.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        diagnostics.setPadding(0, gap * 2, 0, 0);
+        column.addView(diagnostics);
+
         ScrollView root = new ScrollView(this);
         root.addView(column);
         setContentView(root);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (diagnostics != null) {
+            diagnostics.setText(describeState());
+        }
+    }
+
+    /**
+     * What the keyboard currently sees, so a report from a device does not have
+     * to be guesswork. This is the same check the input method itself uses to
+     * decide whether to show the on-screen keyboard.
+     */
+    private CharSequence describeState() {
+        StringBuilder out = new StringBuilder();
+        out.append("Status\n\n");
+
+        String version = "?";
+        try {
+            version = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (PackageManager.NameNotFoundException ignored) {
+            // Cannot happen for our own package.
+        }
+        out.append("Version: ").append(version).append('\n');
+
+        boolean physical = false;
+        StringBuilder devices = new StringBuilder();
+        for (int deviceId : InputDevice.getDeviceIds()) {
+            InputDevice device = InputDevice.getDevice(deviceId);
+            if (device == null || device.isVirtual()) {
+                continue;
+            }
+            boolean keyboardSource = (device.getSources() & InputDevice.SOURCE_KEYBOARD)
+                    == InputDevice.SOURCE_KEYBOARD;
+            boolean alphabetic =
+                    device.getKeyboardType() == InputDevice.KEYBOARD_TYPE_ALPHABETIC;
+            if (keyboardSource && alphabetic) {
+                physical = true;
+            }
+            devices.append("  \u2022 ").append(device.getName())
+                   .append(keyboardSource ? " [keyboard" : " [not a keyboard")
+                   .append(alphabetic ? ", can type letters]" : ", cannot type letters]")
+                   .append('\n');
+        }
+
+        out.append("Physical keyboard detected: ")
+           .append(physical ? "YES" : "NO").append('\n');
+
+        SharedPreferences prefs = getSharedPreferences(
+                KhmerSequenceInputMethodService.PREFS, MODE_PRIVATE);
+        boolean forced = prefs.getBoolean(
+                KhmerSequenceInputMethodService.PREF_SHOW_WITH_HARD_KEYBOARD, false);
+        out.append("Show anyway (checkbox above): ").append(forced ? "ON" : "off").append('\n');
+
+        out.append("On-screen keyboard will: ")
+           .append(!physical || forced ? "SHOW" : "stay hidden").append("\n\n");
+
+        out.append("Attached input devices:\n");
+        out.append(devices.length() == 0 ? "  (none)\n" : devices);
+        return out;
     }
 
     /**
