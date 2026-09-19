@@ -118,6 +118,15 @@ in and typing, which put the on-screen keyboard back over the screen. Scanning
 display or mode. An `InputManager.InputDeviceListener` re-evaluates on every
 connect and disconnect, so the keyboard appears and disappears on its own.
 
+Answering `onEvaluateInputViewShown()` is not sufficient on every device. The
+platform gates both `updateInputViewShown()` and `onShowInputRequested()` on it,
+so on a stock build returning false cannot draw an input view — but at least one
+vendor shell (Lenovo's, on a Pad Pro) draws it anyway, which also makes the
+checkbox below look broken. So `hideIfPhysicalKeyboard()` additionally calls
+`requestHideSelf(0)` from `onStartInputView` and from the input-device listener:
+it asks the system to take the keyboard away rather than only replying when
+asked. That is what actually fixed it there.
+
 `onEvaluateInputViewShown()` is overridden rather than inherited, and
 deliberately does not call `super`. The inherited version also returns true
 whenever `Settings.Secure.SHOW_IME_WITH_HARD_KEYBOARD` is set; that setting is
