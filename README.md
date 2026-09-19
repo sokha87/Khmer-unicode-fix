@@ -109,6 +109,15 @@ BANTOC on the apostrophe key. It is otherwise a plain keyboard: no word
 prediction, no long-press popups, no emoji. It exists so undocking never leaves
 you with nothing to type on.
 
+Whether a physical keyboard is attached is asked of the **input devices**, not
+of `Configuration`. Configuration describes the window's display, and in a
+desktop or PC mode it reports no usable hard keyboard even while one is plugged
+in and typing, which put the on-screen keyboard back over the screen. Scanning
+`InputDevice.getDeviceIds()` for a non-virtual device whose keyboard type is
+`KEYBOARD_TYPE_ALPHABETIC` asks the same question directly and does not vary by
+display or mode. An `InputManager.InputDeviceListener` re-evaluates on every
+connect and disconnect, so the keyboard appears and disappears on its own.
+
 `onEvaluateInputViewShown()` is overridden rather than inherited, and
 deliberately does not call `super`. The inherited version also returns true
 whenever `Settings.Secure.SHOW_IME_WITH_HARD_KEYBOARD` is set; that setting is

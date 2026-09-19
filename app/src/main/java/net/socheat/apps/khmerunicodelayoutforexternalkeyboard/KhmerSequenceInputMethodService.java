@@ -2,10 +2,11 @@ package net.socheat.apps.khmerunicodelayoutforexternalkeyboard;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.content.res.Configuration;
+import android.hardware.input.InputManager;
 import android.inputmethodservice.InputMethodService;
 import android.inputmethodservice.Keyboard;
 import android.inputmethodservice.KeyboardView;
+import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
@@ -66,6 +67,9 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     /** Show the on-screen keyboard even while a physical keyboard is attached. */
     static final String PREF_SHOW_WITH_HARD_KEYBOARD = "show_with_hard_keyboard";
 
+    private InputManager inputManager;
+    private InputManager.InputDeviceListener deviceListener;
+
     private KeyboardView keyboardView;
     private Keyboard khmer;
     private Keyboard khmerShift;
@@ -88,6 +92,72 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         latinShift = new Keyboard(this, R.xml.soft_latin_shift);
     }
 
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        // Re-evaluate as soon as a keyboard is plugged in or unplugged, so the
+        // on-screen keyboard appears and disappears on its own.
+        inputManager = (InputManager) getSystemService(Context.INPUT_SERVICE);
+        if (inputManager != null) {
+            deviceListener = new InputManager.InputDeviceListener() {
+                @Override
+                public void onInputDeviceAdded(int deviceId) {
+                    updateInputViewShown();
+                }
+
+                @Override
+                public void onInputDeviceRemoved(int deviceId) {
+                    updateInputViewShown();
+                }
+
+                @Override
+                public void onInputDeviceChanged(int deviceId) {
+                    updateInputViewShown();
+                }
+            };
+            inputManager.registerInputDeviceListener(deviceListener, null);
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        if (inputManager != null && deviceListener != null) {
+            inputManager.unregisterInputDeviceListener(deviceListener);
+        }
+        super.onDestroy();
+    }
+
+    /**
+     * True when a real, physical, letter-typing keyboard is attached.
+     *
+     * <p>Asked of the input devices rather than of {@link android.content.res.Configuration}
+     * on purpose. Configuration describes the window's display, and in a desktop
+     * or PC mode it reports no usable hard keyboard even while one is plugged in
+     * and typing — which put the on-screen keyboard back over the screen in
+     * exactly the situation this app exists to serve. The device list is the
+     * same question asked directly, and it does not vary by display or mode.
+     *
+     * <p>{@code isVirtual()} filters out the synthetic device the platform
+     * itself owns, and the alphabetic check filters out things like volume
+     * rockers and game controllers, which are keyboard sources but cannot type.
+     */
+    private static boolean hasPhysicalKeyboard() {
+        for (int deviceId : InputDevice.getDeviceIds()) {
+            InputDevice device = InputDevice.getDevice(deviceId);
+            if (device == null || device.isVirtual()) {
+                continue;
+            }
+            if (device.getKeyboardType() != InputDevice.KEYBOARD_TYPE_ALPHABETIC) {
+                continue;
+            }
+            if ((device.getSources() & InputDevice.SOURCE_KEYBOARD)
+                    == InputDevice.SOURCE_KEYBOARD) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * Keeps the on-screen keyboard hidden while a physical keyboard is attached.
      *
@@ -96,7 +166,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
      * is set, and that setting is not public API, so an app can neither turn it
      * off nor offer a reliable way to. On some devices it is on by default,
      * which left a soft keyboard covering the screen for someone typing on their
-     * physical keyboard - the exact situation this app exists to serve.
+     * physical keyboard.
      *
      * <p>So the decision is taken here instead, and {@link LanguagesActivity}
      * exposes it. With no physical keyboard the on-screen keyboard always shows,
@@ -104,10 +174,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
      */
     @Override
     public boolean onEvaluateInputViewShown() {
-        Configuration config = getResources().getConfiguration();
-        boolean noHardKeyboard = config.keyboard == Configuration.KEYBOARD_NOKEYS
-                || config.hardKeyboardHidden == Configuration.HARDKEYBOARDHIDDEN_YES;
-        if (noHardKeyboard) {
+        if (!hasPhysicalKeyboard()) {
             return true;
         }
         SharedPreferences prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE);
