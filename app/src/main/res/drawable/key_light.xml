@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Key face for the light keyboard. See key_dark.xml for why the inset is here. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <inset android:insetLeft="1.5dp" android:insetRight="1.5dp"
+               android:insetTop="1.5dp" android:insetBottom="1.5dp">
+            <shape android:shape="rectangle">
+                <solid android:color="#FFBFC4CC" />
+                <corners android:radius="6dp" />
+            </shape>
+        </inset>
+    </item>
+    <item>
+        <inset android:insetLeft="1.5dp" android:insetRight="1.5dp"
+               android:insetTop="1.5dp" android:insetBottom="1.5dp">
+            <shape android:shape="rectangle">
+                <solid android:color="#FFFFFFFF" />
+                <corners android:radius="6dp" />
+            </shape>
+        </inset>
+    </item>
+</selector>

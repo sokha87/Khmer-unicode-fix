@@ -2,6 +2,7 @@ package net.socheat.apps.khmerunicodelayoutforexternalkeyboard;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.hardware.input.InputManager;
 import android.inputmethodservice.InputMethodService;
 import android.inputmethodservice.Keyboard;
@@ -70,6 +71,13 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     /** The service's last visibility decision, reported by {@link LanguagesActivity}. */
     static final String PREF_LAST_DECISION = "last_decision";
 
+    /** On-screen keyboard appearance: {@link #THEME_DEVICE}, dark or light. */
+    static final String PREF_THEME = "theme";
+
+    static final String THEME_DEVICE = "device";
+    static final String THEME_DARK = "dark";
+    static final String THEME_LIGHT = "light";
+
     private InputManager inputManager;
     private InputManager.InputDeviceListener deviceListener;
 
@@ -78,6 +86,9 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     private Keyboard khmerShift;
     private Keyboard latin;
     private Keyboard latinShift;
+
+    /** The theme the current input view was built with. */
+    private boolean viewIsDark;
 
     /** Which script the on-screen keyboard is showing. */
     private boolean latinLayer;
@@ -200,10 +211,31 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         return prefs.getBoolean(PREF_SHOW_WITH_HARD_KEYBOARD, false);
     }
 
+    /**
+     * True when the on-screen keyboard should be drawn dark.
+     *
+     * <p>Follows the device's night mode unless the user has chosen a fixed
+     * theme.
+     */
+    private boolean wantDarkKeyboard() {
+        String theme = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getString(PREF_THEME, THEME_DEVICE);
+        if (THEME_DARK.equals(theme)) {
+            return true;
+        }
+        if (THEME_LIGHT.equals(theme)) {
+            return false;
+        }
+        return (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
+                == Configuration.UI_MODE_NIGHT_YES;
+    }
+
     @Override
     public View onCreateInputView() {
-        keyboardView = (KeyboardView) getLayoutInflater()
-                .inflate(R.layout.soft_keyboard, null);
+        viewIsDark = wantDarkKeyboard();
+        keyboardView = (KeyboardView) getLayoutInflater().inflate(
+                viewIsDark ? R.layout.soft_keyboard_dark : R.layout.soft_keyboard_light,
+                null);
         keyboardView.setOnKeyboardActionListener(this);
         applyKeyboard();
         return keyboardView;
@@ -212,6 +244,11 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     @Override
     public void onStartInputView(EditorInfo info, boolean restarting) {
         super.onStartInputView(info, restarting);
+        // Rebuild if the theme changed, since the colours are baked into the
+        // inflated view and cannot be swapped on the one that is up.
+        if (keyboardView == null || viewIsDark != wantDarkKeyboard()) {
+            setInputView(onCreateInputView());
+        }
         latinLayer = !isKhmerSubtype();
         shifted = false;
         applyKeyboard();

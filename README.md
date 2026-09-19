@@ -103,6 +103,13 @@ Whether it appears is left to the inherited
 or when the user has asked for a soft keyboard alongside a physical one — so
 nothing is drawn while a keyboard is attached.
 
+Its appearance follows the device's dark/light mode, and **Keyboard languages**
+can pin it to Dark or Light instead. There are two keyboard layout files because
+`KeyboardView` reads `keyBackground`, `keyTextColor`, `shadowColor` and
+`shadowRadius` from XML at construction and offers no runtime setters, so a
+theme cannot be applied to a view that is already inflated; the service inflates
+whichever one the preference asks for and rebuilds the view when it changes.
+
 Every printing key of the physical layout is on it — 52 positions per layer,
 including the ones a compact soft keyboard usually drops, such as `់` U+17CB
 BANTOC on the apostrophe key. It is otherwise a plain keyboard: no word

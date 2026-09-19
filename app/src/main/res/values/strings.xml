@@ -18,6 +18,10 @@ Each language keeps its own physical keyboard layout. Set them under Physical ke
 
 Note: Chinese types Latin letters only. This keyboard has no pinyin conversion, so it cannot produce Chinese characters — use Gboard or another Chinese input method for that.</string>
     <string name="languages_show_with_hard_keyboard">Show the on-screen keyboard even when a physical keyboard is connected</string>
+    <string name="languages_theme">On-screen keyboard appearance</string>
+    <string name="theme_device">Follow device</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_light">Light</string>
     <string name="languages_choose">Choose languages</string>
     <string name="languages_keyboard_settings">Keyboard settings</string>
     <string name="languages_unavailable">This screen is not available on this device. Open Settings → Languages &amp; input instead.</string>

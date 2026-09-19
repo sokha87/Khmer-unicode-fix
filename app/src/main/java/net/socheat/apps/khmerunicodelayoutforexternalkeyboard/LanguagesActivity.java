@@ -15,6 +15,8 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -78,6 +80,43 @@ public class LanguagesActivity extends Activity {
                 });
         showWithHardKeyboard.setPadding(0, gap, 0, gap);
         column.addView(showWithHardKeyboard);
+
+        TextView themeLabel = new TextView(this);
+        themeLabel.setText(R.string.languages_theme);
+        themeLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        themeLabel.setPadding(0, gap, 0, 0);
+        column.addView(themeLabel);
+
+        final String[] themeValues = {
+                KhmerSequenceInputMethodService.THEME_DEVICE,
+                KhmerSequenceInputMethodService.THEME_DARK,
+                KhmerSequenceInputMethodService.THEME_LIGHT,
+        };
+        final int[] themeLabels = {
+                R.string.theme_device, R.string.theme_dark, R.string.theme_light,
+        };
+        String current = prefs.getString(KhmerSequenceInputMethodService.PREF_THEME,
+                KhmerSequenceInputMethodService.THEME_DEVICE);
+        RadioGroup themes = new RadioGroup(this);
+        themes.setOrientation(RadioGroup.VERTICAL);
+        for (int i = 0; i < themeValues.length; i++) {
+            RadioButton option = new RadioButton(this);
+            option.setId(i + 1);
+            option.setText(themeLabels[i]);
+            option.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+            option.setChecked(themeValues[i].equals(current));
+            themes.addView(option);
+        }
+        themes.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(RadioGroup group, int checkedId) {
+                if (checkedId >= 1 && checkedId <= themeValues.length) {
+                    prefs.edit().putString(KhmerSequenceInputMethodService.PREF_THEME,
+                            themeValues[checkedId - 1]).apply();
+                }
+            }
+        });
+        column.addView(themes);
 
         column.addView(button(R.string.languages_choose, new View.OnClickListener() {
             @Override

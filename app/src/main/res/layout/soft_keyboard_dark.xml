@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The dark on-screen keyboard.
+
+    There are two of these because KeyboardView reads keyBackground,
+    keyTextColor, shadowColor and shadowRadius from XML at construction and
+    exposes no runtime setters for them, so a theme cannot be applied to a
+    single inflated view. The service inflates whichever one the theme
+    preference asks for.
+-->
+<android.inputmethodservice.KeyboardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/keyboard_view"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="#FF1C1C1E"
+    android:keyBackground="@drawable/key_dark"
+    android:keyTextColor="#FFFFFFFF"
+    android:shadowColor="#00000000"
+    android:shadowRadius="0"
+    android:keyPreviewLayout="@layout/key_preview" />
