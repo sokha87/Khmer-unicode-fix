@@ -18,6 +18,8 @@ Each language keeps its own physical keyboard layout. Set them under Physical ke
 
 Note: Chinese types Latin letters only. This keyboard has no pinyin conversion, so it cannot produce Chinese characters — use Gboard or another Chinese input method for that.</string>
     <string name="languages_show_with_hard_keyboard">Show the on-screen keyboard even when a physical keyboard is connected</string>
+    <string name="probe_label">Type here to check what the keyboard produces</string>
+    <string name="probe_hint">Try ខ្ញុំ  (X, J, Shift+J, comma)</string>
     <string name="languages_theme">On-screen keyboard appearance</string>
     <string name="theme_device">Follow device</string>
     <string name="theme_dark">Dark</string>

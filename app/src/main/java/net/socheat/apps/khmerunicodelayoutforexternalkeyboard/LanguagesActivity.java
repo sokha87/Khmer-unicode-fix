@@ -8,11 +8,14 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.content.pm.PackageManager;
 import android.provider.Settings;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.InputDevice;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.RadioButton;
@@ -132,6 +135,34 @@ public class LanguagesActivity extends Activity {
             }
         }));
 
+        TextView probeLabel = new TextView(this);
+        probeLabel.setText(R.string.probe_label);
+        probeLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        probeLabel.setPadding(0, gap * 2, 0, 0);
+        column.addView(probeLabel);
+
+        final TextView codePoints = new TextView(this);
+        codePoints.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        codePoints.setPadding(0, gap / 2, 0, 0);
+
+        EditText probe = new EditText(this);
+        probe.setHint(R.string.probe_hint);
+        probe.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        probe.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence t, int a, int b, int c) { }
+
+            @Override
+            public void onTextChanged(CharSequence t, int a, int b, int c) { }
+
+            @Override
+            public void afterTextChanged(Editable text) {
+                codePoints.setText(describeCodePoints(text));
+            }
+        });
+        column.addView(probe);
+        column.addView(codePoints);
+
         diagnostics = new TextView(this);
         diagnostics.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         diagnostics.setPadding(0, gap * 2, 0, 0);
@@ -148,6 +179,31 @@ public class LanguagesActivity extends Activity {
         if (diagnostics != null) {
             diagnostics.setText(describeState());
         }
+    }
+
+    /**
+     * The code points behind what was typed.
+     *
+     * <p>Khmer renders as stacked clusters, so a wrong character and a font that
+     * cannot shape a correct one look much the same on screen. This separates
+     * the two: if the code points are right, the keyboard did its job and the
+     * problem is the font or the app doing the rendering.
+     */
+    private static CharSequence describeCodePoints(CharSequence text) {
+        if (text == null || text.length() == 0) {
+            return "";
+        }
+        StringBuilder out = new StringBuilder();
+        int i = 0;
+        while (i < text.length()) {
+            int cp = Character.codePointAt(text, i);
+            i += Character.charCount(cp);
+            if (out.length() > 0) {
+                out.append(' ');
+            }
+            out.append(String.format("U+%04X", cp));
+        }
+        return out;
     }
 
     /**
