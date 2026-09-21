@@ -23,8 +23,8 @@ ANDROID_JAR=/usr/lib/android-sdk/platforms/android-23/android.jar
 FRAMEWORK_RES=/usr/share/android-framework-res/framework-res.apk
 
 PACKAGE=net.socheat.apps.khmerunicodelayoutforexternalkeyboard
-VERSION_CODE=14
-VERSION_NAME=0.6.1
+VERSION_CODE=15
+VERSION_NAME=0.7.0
 MIN_SDK=21
 TARGET_SDK=34
 

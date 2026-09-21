@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.hardware.input.InputManager;
+import android.text.InputType;
 import android.inputmethodservice.InputMethodService;
 import android.inputmethodservice.Keyboard;
 import android.inputmethodservice.KeyboardView;
@@ -86,6 +87,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     private Keyboard khmerShift;
     private Keyboard latin;
     private Keyboard latinShift;
+    private Keyboard number;
 
     /** The theme the current input view was built with. */
     private boolean viewIsDark;
@@ -93,6 +95,12 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     /** Which script the on-screen keyboard is showing. */
     private boolean latinLayer;
     private boolean shifted;
+
+    /** The field wants digits, so the number pad is showing. */
+    private boolean numericField;
+
+    /** The field being edited, kept for its input type. */
+    private EditorInfo editor;
 
     // ---------------------------------------------------------------- on-screen
 
@@ -104,6 +112,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         khmerShift = new Keyboard(this, R.xml.soft_khmer_shift);
         latin = new Keyboard(this, R.xml.soft_latin);
         latinShift = new Keyboard(this, R.xml.soft_latin_shift);
+        number = new Keyboard(this, R.xml.soft_number);
     }
 
     @Override
@@ -249,9 +258,12 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         if (keyboardView == null || viewIsDark != wantDarkKeyboard()) {
             setInputView(onCreateInputView());
         }
-        latinLayer = !isKhmerSubtype();
+        editor = info;
+        numericField = wantsDigits(info);
+        latinLayer = numericField || wantsLatin(info) || !isKhmerSubtype();
         shifted = false;
         applyKeyboard();
+        updateShiftFromCursor();
         hideIfPhysicalKeyboard();
     }
 
@@ -293,11 +305,77 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         if (keyboardView == null) {
             return;
         }
-        Keyboard keyboard = latinLayer
-                ? (shifted ? latinShift : latin)
-                : (shifted ? khmerShift : khmer);
+        Keyboard keyboard;
+        if (numericField) {
+            keyboard = number;
+        } else if (latinLayer) {
+            keyboard = shifted ? latinShift : latin;
+        } else {
+            keyboard = shifted ? khmerShift : khmer;
+        }
         keyboardView.setKeyboard(keyboard);
         keyboardView.setShifted(shifted);
+    }
+
+    /** A field that wants digits gets the number pad, whatever the language. */
+    private static boolean wantsDigits(EditorInfo info) {
+        if (info == null) {
+            return false;
+        }
+        int cls = info.inputType & InputType.TYPE_MASK_CLASS;
+        return cls == InputType.TYPE_CLASS_NUMBER
+                || cls == InputType.TYPE_CLASS_PHONE
+                || cls == InputType.TYPE_CLASS_DATETIME;
+    }
+
+    /**
+     * Fields that are never Khmer: an email address, a URL or a password is
+     * Latin by definition, so opening on the Khmer layer would only be wrong.
+     */
+    private static boolean wantsLatin(EditorInfo info) {
+        if (info == null
+                || (info.inputType & InputType.TYPE_MASK_CLASS) != InputType.TYPE_CLASS_TEXT) {
+            return false;
+        }
+        switch (info.inputType & InputType.TYPE_MASK_VARIATION) {
+            case InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS:
+            case InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS:
+            case InputType.TYPE_TEXT_VARIATION_URI:
+            case InputType.TYPE_TEXT_VARIATION_PASSWORD:
+            case InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD:
+            case InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Turns shift on where the field says a capital belongs — the start of the
+     * text, after a full stop, or every word, according to the editor's own
+     * capitalisation flags. Khmer has no case, so this only applies to Latin.
+     */
+    private void updateShiftFromCursor() {
+        if (numericField || !latinLayer || editor == null) {
+            return;
+        }
+        InputConnection connection = getCurrentInputConnection();
+        if (connection == null) {
+            return;
+        }
+        boolean wanted = connection.getCursorCapsMode(editor.inputType) != 0;
+        if (wanted != shifted) {
+            shifted = wanted;
+            applyKeyboard();
+        }
+    }
+
+    @Override
+    public void onUpdateSelection(int oldSelStart, int oldSelEnd, int newSelStart,
+            int newSelEnd, int candidatesStart, int candidatesEnd) {
+        super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd,
+                candidatesStart, candidatesEnd);
+        updateShiftFromCursor();
     }
 
     @Override
@@ -322,11 +400,12 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                 return;
             default:
                 commit(String.valueOf((char) primaryCode));
-                // Shift is one-shot, like every other soft keyboard.
+                // Shift is one-shot; auto-capitalisation decides the next state.
                 if (shifted) {
                     shifted = false;
                     applyKeyboard();
                 }
+                updateShiftFromCursor();
         }
     }
 
