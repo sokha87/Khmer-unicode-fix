@@ -23,7 +23,11 @@ import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import java.io.File;
+
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -128,6 +132,18 @@ public class KhmerSequenceInputMethodService extends InputMethodService
 
     private Dictionary khmerWords;
     private Dictionary latinWords;
+
+    /** What has followed what in this phone's own typing; see {@link NextWords}. */
+    private final NextWords nextWords = new NextWords();
+
+    /** The finished word before the one being typed, or null if there is none. */
+    private String contextWord;
+
+    /** The pair last learned, so a cursor move does not count it twice. */
+    private String lastLearned;
+
+    /** The cursor position last reported, which makes {@link #lastLearned} unique. */
+    private int cursorAt;
     private LinearLayout candidateStrip;
     private LinearLayout suggestionStrip;
     private HorizontalScrollView suggestionScroller;
@@ -191,6 +207,12 @@ public class KhmerSequenceInputMethodService extends InputMethodService
             inputManager.registerInputDeviceListener(deviceListener, null);
         }
         loadDictionaries();
+        nextWords.load(learnedWordsFile());
+    }
+
+    /** The learned word pairs live in the app's own storage, and go nowhere else. */
+    private File learnedWordsFile() {
+        return new File(getFilesDir(), "next_words.txt");
     }
 
     /**
@@ -234,6 +256,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         if (inputManager != null && deviceListener != null) {
             inputManager.unregisterInputDeviceListener(deviceListener);
         }
+        saveLearnedWords();
         super.onDestroy();
     }
 
@@ -355,6 +378,13 @@ public class KhmerSequenceInputMethodService extends InputMethodService
 
         applyKeyboard();
         return root;
+    }
+
+    @Override
+    public void onFinishInput() {
+        super.onFinishInput();
+        // The natural moment to write out what was learned while typing.
+        saveLearnedWords();
     }
 
     @Override
@@ -510,6 +540,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
             int newSelEnd, int candidatesStart, int candidatesEnd) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd,
                 candidatesStart, candidatesEnd);
+        cursorAt = newSelEnd;
         updateShiftFromCursor();
         // Fires for physical typing too, which is how that gets suggestions.
         updateCandidates();
@@ -590,7 +621,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     private static final int MAX_CANDIDATES = 8;
 
     /** How far back to look for the word being typed. */
-    private static final int LOOKBEHIND = 24;
+    private static final int LOOKBEHIND = 48;
 
     /**
      * The strip of suggestions.
@@ -636,6 +667,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         replacing = 0;
         replacingCapital = false;
         separator = "";
+        contextWord = null;
 
         InputConnection connection = getCurrentInputConnection();
         if (connection != null && suggestionsEnabled()) {
@@ -648,7 +680,9 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                         start--;
                     }
                     String word = before.subSequence(start, before.length()).toString();
-                    suggestions = latinWords.completions(word.toLowerCase(), MAX_CANDIDATES);
+                    contextWord = wordEndingAt(before, start);
+                    suggestions = preferWhatFollows(
+                            latinWords.completions(word.toLowerCase(), MAX_CANDIDATES));
                     replacing = word.length();
                     // The word list is lower case; a word typed with a capital
                     // should not lose it by being picked from the strip.
@@ -659,14 +693,32 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                     while (start > 0 && isKhmer(before.charAt(start - 1))) {
                         start--;
                     }
+                    contextWord = wordEndingAt(before, start);
                     for (int from = start; from < before.length(); from++) {
                         String tail = before.subSequence(from, before.length()).toString();
                         List<String> found = khmerWords.completions(tail, MAX_CANDIDATES);
                         if (!found.isEmpty()) {
-                            suggestions = found;
+                            suggestions = preferWhatFollows(found);
                             replacing = tail.length();
                             separator = KHMER_WORD_BREAK;
                             break;
+                        }
+                    }
+                } else if (!isWordChar(last)) {
+                    // A word has just been closed off. Remember what it
+                    // followed, and - once there is a space to put one in -
+                    // offer what usually comes after it.
+                    List<String> tail = wordsBefore(before, 2);
+                    if (!tail.isEmpty()) {
+                        String finished = tail.get(0);
+                        if (tail.size() > 1) {
+                            remember(tail.get(1), finished);
+                        }
+                        if (isWordBreak(last)) {
+                            contextWord = finished;
+                            suggestions = nextWords.after(finished, MAX_CANDIDATES);
+                            separator = isKhmer(finished.charAt(finished.length() - 1))
+                                    ? KHMER_WORD_BREAK : " ";
                         }
                     }
                 }
@@ -674,9 +726,119 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         }
         note(PREF_LAST_LOOKUP, "strip=" + (candidateStrip == null ? "not created" : "ready")
                 + ", dictionaries=" + (latinWords == null ? "null" : "ready")
+                + ", learned=" + nextWords.size()
+                + ", after=" + (contextWord == null ? "-" : contextWord)
                 + ", matches=" + suggestions.size()
                 + (suggestions.isEmpty() ? "" : " (" + suggestions.get(0) + ")"));
         showCandidates(suggestions);
+    }
+
+    /** A space, or the zero width space that separates Khmer words. */
+    private static boolean isWordBreak(char c) {
+        return c == ' ' || c == '\u200b' || c == '\t';
+    }
+
+    private static boolean isWordChar(char c) {
+        return isLatinLetter(c) || isKhmer(c) || c == '\'';
+    }
+
+    /**
+     * The word that ends at {@code end}, skipping any word breaks just before
+     * it, or null if the text there is punctuation or the start of the field.
+     *
+     * <p>Stopping at punctuation is the point: "hello. world" should not teach
+     * the keyboard that "world" follows "hello", because it does not - a new
+     * sentence started.
+     */
+    private static String wordEndingAt(CharSequence text, int end) {
+        int i = end;
+        while (i > 0 && isWordBreak(text.charAt(i - 1))) {
+            i--;
+        }
+        int stop = i;
+        while (i > 0 && isWordChar(text.charAt(i - 1))) {
+            i--;
+        }
+        return i == stop ? null : text.subSequence(i, stop).toString();
+    }
+
+    /**
+     * Up to {@code limit} words at the end of {@code text}, most recent first.
+     *
+     * <p>Whatever closed off the last word is stepped over, punctuation
+     * included - "hello world." still ends in the word "world". Between words,
+     * only spaces are stepped over, so "hello. world" yields "world" alone: a
+     * full stop between two words means the second does not follow the first,
+     * and teaching the keyboard otherwise would be teaching it nonsense.
+     */
+    private static List<String> wordsBefore(CharSequence text, int limit) {
+        List<String> found = new ArrayList<>();
+        int i = text.length();
+        boolean last = true;
+        while (found.size() < limit) {
+            while (i > 0 && (last ? !isWordChar(text.charAt(i - 1))
+                                  : isWordBreak(text.charAt(i - 1)))) {
+                i--;
+            }
+            int stop = i;
+            while (i > 0 && isWordChar(text.charAt(i - 1))) {
+                i--;
+            }
+            if (i == stop) {
+                break;          // a sentence boundary, or the start of the field
+            }
+            found.add(text.subSequence(i, stop).toString());
+            last = false;
+        }
+        return found;
+    }
+
+    /**
+     * Moves the completions that have followed {@link #contextWord} before to
+     * the front, commonest first, leaving the rest in the order the word list
+     * gave them.
+     *
+     * <p>This is what makes the strip read the sentence rather than the word:
+     * with "my l" typed, "love" beats "long" if "my love" has been written
+     * before, however the two rank in the language at large.
+     */
+    private List<String> preferWhatFollows(List<String> completions) {
+        if (contextWord == null || completions.size() < 2) {
+            return completions;
+        }
+        List<String> seen = new ArrayList<>();
+        List<String> rest = new ArrayList<>();
+        for (String word : completions) {
+            (nextWords.timesAfter(contextWord, word) > 0 ? seen : rest).add(word);
+        }
+        if (seen.isEmpty()) {
+            return completions;
+        }
+        final String context = contextWord;
+        Collections.sort(seen, new Comparator<String>() {
+            @Override
+            public int compare(String a, String b) {
+                return nextWords.timesAfter(context, b) - nextWords.timesAfter(context, a);
+            }
+        });
+        seen.addAll(rest);
+        return seen;
+    }
+
+    /** Counts a word pair once, however often the cursor passes over it. */
+    private void remember(String previous, String word) {
+        String key = cursorAt + "\u0000" + previous + "\u0000" + word;
+        if (key.equals(lastLearned)) {
+            return;
+        }
+        lastLearned = key;
+        nextWords.learn(previous, word);
+    }
+
+    private void saveLearnedWords() {
+        if (nextWords.isDirty()) {
+            nextWords.save(learnedWordsFile());
+        }
     }
 
     private boolean suggestionsEnabled() {
