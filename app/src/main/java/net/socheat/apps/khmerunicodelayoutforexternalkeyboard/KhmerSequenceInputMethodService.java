@@ -148,6 +148,19 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     /** The context under which a word is counted regardless of what preceded it. */
     private static final String EVERYWHERE = "\u0000";
 
+    /**
+     * What this keyboard has typed into the field, most recent last.
+     *
+     * <p>Suggestions are normally worked out from the text read back from the
+     * editor, which is the truth and includes whatever was already there. Some
+     * editors return nothing at all - a browser's search box among them - and
+     * in those the strip had nothing to go on and fell back on the words
+     * written most often, which is why it kept offering English under Khmer
+     * typing. This is the fallback: less than the truth, since it only knows
+     * what was typed here, but enough to complete the word in hand.
+     */
+    private final StringBuilder typed = new StringBuilder();
+
     private LinearLayout candidateStrip;
     private LinearLayout suggestionStrip;
     private HorizontalScrollView suggestionScroller;
@@ -405,6 +418,8 @@ public class KhmerSequenceInputMethodService extends InputMethodService
             setInputView(onCreateInputView());
         }
         editor = info;
+        // A different field, so nothing typed into the last one applies.
+        typed.setLength(0);
         numericField = wantsDigits(info);
         latinLayer = numericField || wantsLatin(info) || !isKhmerSubtype();
         shifted = false;
@@ -626,6 +641,8 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                 return;
             case Keyboard.KEYCODE_DELETE:
                 sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL);
+                forget(1);
+                updateCandidates();
                 return;
             case Keyboard.KEYCODE_DONE:
                 if (!sendDefaultEditorAction(true)) {
@@ -660,6 +677,20 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         if (connection != null) {
             connection.commitText(text, 1);
         }
+        track(text);
+    }
+
+    /** Notes text added to the field, keeping {@link #typed} to a useful tail. */
+    private void track(String text) {
+        typed.append(text);
+        if (typed.length() > LOOKBEHIND) {
+            typed.delete(0, typed.length() - LOOKBEHIND);
+        }
+    }
+
+    /** Keeps {@link #typed} in step with text removed from the field. */
+    private void forget(int characters) {
+        typed.delete(Math.max(0, typed.length() - characters), typed.length());
     }
 
     @Override public void onPress(int primaryCode) { }
@@ -729,7 +760,12 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         InputConnection connection = getCurrentInputConnection();
         if (connection != null && suggestionsEnabled()) {
             CharSequence before = connection.getTextBeforeCursor(LOOKBEHIND, 0);
-            if (before != null && before.length() > 0) {
+            if (before == null || before.length() == 0) {
+                // Editors that will not say; see #typed. Taken as a snapshot,
+                // because correcting a pronoun below edits the record itself.
+                before = typed.toString();
+            }
+            if (before.length() > 0) {
                 char last = before.charAt(before.length() - 1);
                 if (isLatinLetter(last) && latinWords != null) {
                     int start = before.length();
@@ -767,7 +803,8 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                     // offer what usually comes after it.
                     List<String> tail = wordsBefore(before, 2);
                     if (!tail.isEmpty()) {
-                        String finished = tail.get(0);
+                        String finished =
+                                capitalisePronoun(connection, before, tail.get(0));
                         remember(tail.size() > 1 ? tail.get(1) : null, finished, before);
                         if (isWordBreak(last)) {
                             contextWord = finished;
@@ -779,8 +816,12 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                 }
             } else {
                 // An empty field: nothing to complete and nothing to follow,
-                // but the words written most often are still a fair opening.
-                suggestions = nextWords.after(EVERYWHERE, MAX_CANDIDATES);
+                // but the words written most often are still a fair opening -
+                // the ones in the script being written, at least.
+                List<String> opening = new ArrayList<>();
+                addUnseen(opening, nextWords.after(EVERYWHERE, MAX_CANDIDATES),
+                        null, !latinLayer);
+                suggestions = opening;
                 separator = latinLayer ? " " : KHMER_WORD_BREAK;
             }
         }
@@ -897,6 +938,49 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     }
 
     /**
+     * English writes the pronoun with a capital wherever it falls: "i" is
+     * always "I", and so are "i'm", "i'll" and "i've". Nothing else is
+     * corrected - a keyboard that rewrites what was typed is worse than one
+     * that leaves it alone - but this one is unambiguous, and doing it by hand
+     * means reaching for shift in the middle of every other sentence.
+     */
+    private static String englishCase(String word) {
+        return word.equals("i") || word.startsWith("i'")
+                ? "I" + word.substring(1) : word;
+    }
+
+    /**
+     * Puts the capital on a pronoun that has just been finished.
+     *
+     * @return the word as it now stands in the field
+     */
+    private String capitalisePronoun(InputConnection connection, CharSequence before,
+            String word) {
+        if (!latinLayer || editor == null || capsModes(editor) == 0) {
+            return word;
+        }
+        String fixed = englishCase(word);
+        if (fixed.equals(word)) {
+            return word;
+        }
+        // Whatever closed the word off - a space, a full stop - is put back.
+        int trailing = 0;
+        while (trailing < before.length()
+                && !isWordChar(before.charAt(before.length() - 1 - trailing))) {
+            trailing++;
+        }
+        String closing =
+                before.subSequence(before.length() - trailing, before.length()).toString();
+        connection.beginBatchEdit();
+        connection.deleteSurroundingText(word.length() + trailing, 0);
+        connection.commitText(fixed + closing, 1);
+        connection.endBatchEdit();
+        forget(word.length() + trailing);
+        track(fixed + closing);
+        return fixed;
+    }
+
+    /**
      * Counts a word once, however often the cursor passes back over it.
      *
      * <p>The text leading up to the word says where it was written, so the same
@@ -931,18 +1015,32 @@ public class KhmerSequenceInputMethodService extends InputMethodService
      * pair, so the strip sharpens as it is used.
      */
     private List<String> whatComesAfter(String word) {
-        List<String> found = new ArrayList<>(nextWords.after(word, MAX_CANDIDATES));
-        if (latinPairs != null) {
-            addUnseen(found, latinPairs.after(word), word);
+        boolean khmer = isKhmer(word.charAt(word.length() - 1));
+        List<String> found = new ArrayList<>();
+        addUnseen(found, nextWords.after(word, MAX_CANDIDATES), word, khmer);
+        if (!khmer && latinPairs != null) {
+            addUnseen(found, latinPairs.after(word), word, khmer);
         }
-        addUnseen(found, nextWords.after(EVERYWHERE, MAX_CANDIDATES), word);
+        addUnseen(found, nextWords.after(EVERYWHERE, MAX_CANDIDATES), word, khmer);
         return found;
     }
 
-    private static void addUnseen(List<String> found, List<String> extra, String word) {
+    /**
+     * Adds what is not already there, skipping anything in the wrong script.
+     *
+     * <p>The learned counts are one table across both languages, because a
+     * Khmer sentence can quote an English word and the pair is worth knowing
+     * either way. What is worth nothing is offering English words under Khmer
+     * typing, which is what the strip did whenever it had nothing else.
+     */
+    private static void addUnseen(List<String> found, List<String> extra,
+            String word, boolean khmer) {
         for (String candidate : extra) {
             if (found.size() >= MAX_CANDIDATES) {
                 return;
+            }
+            if (candidate.length() == 0 || isKhmer(candidate.charAt(0)) != khmer) {
+                continue;
             }
             if (!found.contains(candidate) && !candidate.equals(word)) {
                 found.add(candidate);
@@ -1015,15 +1113,20 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         if (connection == null) {
             return;
         }
+        if (latinLayer && editor != null && capsModes(editor) != 0) {
+            suggestion = englishCase(suggestion);
+        }
         if (replacingCapital && suggestion.length() > 0) {
             suggestion = Character.toUpperCase(suggestion.charAt(0)) + suggestion.substring(1);
         }
         connection.beginBatchEdit();
         if (replacing > 0) {
             connection.deleteSurroundingText(replacing, 0);
+            forget(replacing);
         }
         connection.commitText(suggestion + separator, 1);
         connection.endBatchEdit();
+        track(suggestion + separator);
         replacing = 0;
         replacingCapital = false;
         separator = "";
