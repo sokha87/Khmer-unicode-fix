@@ -85,6 +85,12 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     /** Offer word suggestions while typing. */
     static final String PREF_SUGGESTIONS = "suggestions";
 
+    /** Whether the word lists loaded, reported by {@link LanguagesActivity}. */
+    static final String PREF_DICT_STATUS = "dict_status";
+
+    /** The last suggestion lookup, reported by {@link LanguagesActivity}. */
+    static final String PREF_LAST_LOOKUP = "last_lookup";
+
     /** On-screen keyboard appearance: {@link #THEME_DEVICE}, dark or light. */
     static final String PREF_THEME = "theme";
 
@@ -176,12 +182,18 @@ public class KhmerSequenceInputMethodService extends InputMethodService
             public void run() {
                 Dictionary khmer = null;
                 Dictionary latin = null;
+                String status;
                 try {
                     khmer = Dictionary.load(getAssets(), "dict_km.txt");
                     latin = Dictionary.load(getAssets(), "dict_en.txt");
-                } catch (Exception e) {
+                    status = "loaded (" + khmer.size() + " Khmer, "
+                            + latin.size() + " English)";
+                } catch (Throwable t) {
                     // Suggestions are optional; typing must work regardless.
+                    // But record why, or a silent failure is undiagnosable.
+                    status = "FAILED: " + t;
                 }
+                note(PREF_DICT_STATUS, status);
                 final Dictionary loadedKhmer = khmer;
                 final Dictionary loadedLatin = latin;
                 main.post(new Runnable() {
@@ -568,6 +580,10 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                 }
             }
         }
+        note(PREF_LAST_LOOKUP, "strip=" + (candidateStrip == null ? "not created" : "ready")
+                + ", dictionaries=" + (latinWords == null ? "null" : "ready")
+                + ", matches=" + suggestions.size()
+                + (suggestions.isEmpty() ? "" : " (" + suggestions.get(0) + ")"));
         showCandidates(suggestions);
     }
 
@@ -577,6 +593,10 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     }
 
     private void showCandidates(List<String> suggestions) {
+        // Set visibility even when the strip has not been created yet: the
+        // framework builds it when the window is shown, and returning early
+        // here would leave the candidates frame hidden for good.
+        setCandidatesViewShown(!suggestions.isEmpty());
         if (candidateStrip == null) {
             return;
         }
@@ -596,7 +616,12 @@ public class KhmerSequenceInputMethodService extends InputMethodService
             });
             candidateStrip.addView(view);
         }
-        setCandidatesViewShown(!suggestions.isEmpty());
+    }
+
+    /** Leaves a short note for LanguagesActivity to report. */
+    private void note(String key, String value) {
+        getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().putString(key, value).apply();
     }
 
     /** Swaps the partial word for the chosen one. */

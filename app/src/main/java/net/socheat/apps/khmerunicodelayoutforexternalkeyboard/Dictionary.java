@@ -58,6 +58,10 @@ final class Dictionary {
         return new Dictionary(words, ranks);
     }
 
+    int size() {
+        return words.length;
+    }
+
     /**
      * @return up to {@code limit} words starting with {@code prefix}, most
      *         common first. The prefix itself is not offered back.

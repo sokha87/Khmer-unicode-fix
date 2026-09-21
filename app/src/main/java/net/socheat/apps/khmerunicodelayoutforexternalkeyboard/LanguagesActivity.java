@@ -270,6 +270,13 @@ public class LanguagesActivity extends Activity {
         out.append("On-screen keyboard will: ")
            .append(!physical || forced ? "SHOW" : "stay hidden").append('\n');
 
+        out.append("Dictionaries: ")
+           .append(prefs.getString(KhmerSequenceInputMethodService.PREF_DICT_STATUS,
+                                   "(not loaded yet)")).append('\n');
+        out.append("Last suggestion lookup: ")
+           .append(prefs.getString(KhmerSequenceInputMethodService.PREF_LAST_LOOKUP,
+                                   "(none yet)")).append('\n');
+
         out.append("Keyboard's last decision: ")
            .append(prefs.getString(KhmerSequenceInputMethodService.PREF_LAST_DECISION,
                                    "(this build has not run yet)")).append("\n\n");
