@@ -133,6 +133,9 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     private Dictionary khmerWords;
     private Dictionary latinWords;
 
+    /** What follows what in English at large, until the learned counts take over. */
+    private Bigrams latinPairs;
+
     /** What has followed what in this phone's own typing; see {@link NextWords}. */
     private final NextWords nextWords = new NextWords();
 
@@ -227,12 +230,15 @@ public class KhmerSequenceInputMethodService extends InputMethodService
             public void run() {
                 Dictionary khmer = null;
                 Dictionary latin = null;
+                Bigrams pairs = null;
                 String status;
                 try {
                     khmer = Dictionary.load(getAssets(), "dict_km.txt");
                     latin = Dictionary.load(getAssets(), "dict_en.txt");
+                    pairs = Bigrams.load(getAssets(), "bigrams_en.txt");
                     status = "loaded (" + khmer.size() + " Khmer, "
-                            + latin.size() + " English)";
+                            + latin.size() + " English, "
+                            + pairs.size() + " English pairs)";
                 } catch (Throwable t) {
                     // Suggestions are optional; typing must work regardless.
                     // But record why, or a silent failure is undiagnosable.
@@ -241,11 +247,13 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                 note(PREF_DICT_STATUS, status);
                 final Dictionary loadedKhmer = khmer;
                 final Dictionary loadedLatin = latin;
+                final Bigrams loadedPairs = pairs;
                 main.post(new Runnable() {
                     @Override
                     public void run() {
                         khmerWords = loadedKhmer;
                         latinWords = loadedLatin;
+                        latinPairs = loadedPairs;
                     }
                 });
             }
@@ -492,18 +500,26 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     }
 
     /**
-     * Turns shift on where a capital belongs — the start of the text and
-     * after a full stop. Khmer has no case, so this only applies to Latin.
+     * Turns shift on where a capital belongs - the start of the text and after
+     * a full stop. Khmer has no case, so this only applies to Latin.
      */
     private void updateShiftFromCursor() {
         if (numericField || !latinLayer || editor == null) {
             return;
         }
-        InputConnection connection = getCurrentInputConnection();
-        if (connection == null) {
-            return;
+        int modes = capsModes(editor);
+        boolean wanted = false;
+        if (modes != 0) {
+            InputConnection connection = getCurrentInputConnection();
+            if (connection == null) {
+                return;
+            }
+            CharSequence before = connection.getTextBeforeCursor(LOOKBEHIND, 0);
+            if (before == null) {
+                before = "";
+            }
+            wanted = wantsCapital(before, before.length() < LOOKBEHIND, modes);
         }
-        boolean wanted = connection.getCursorCapsMode(capsInputType(editor)) != 0;
         if (wanted != shifted) {
             shifted = wanted;
             applyKeyboard();
@@ -511,29 +527,68 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     }
 
     /**
-     * The input type to ask {@link InputConnection#getCursorCapsMode} about.
+     * Which capitalisation rules apply in this field, or 0 for none.
      *
-     * <p>That call only reports a capital where the field asked for one, and
-     * most fields ask for nothing at all — which is why the first letter of a
-     * message was staying lower case. A sentence begins with a capital whether
-     * or not the app remembered to say so, so sentence capitalisation is
-     * supplied here for ordinary prose fields. Fields that already state a
-     * preference keep it, and the ones where a capital would be wrong —
-     * passwords, e-mail addresses, URLs — are left alone.
+     * <p>Most fields request nothing at all, so a field that asks for nothing
+     * gets sentence capitalisation anyway: a sentence starts with a capital
+     * whether or not the app remembered to say so. Only the fields where a
+     * capital would be actively wrong are left alone, and that is a shorter
+     * list than it looks - a browser's address bar doubles as its search box,
+     * and domain names are case-insensitive, so capitalising there costs
+     * nothing and not capitalising costs every sentence typed into it.
      */
-    private static int capsInputType(EditorInfo info) {
-        int type = info.inputType;
-        if ((type & InputType.TYPE_MASK_CLASS) != InputType.TYPE_CLASS_TEXT
-                || wantsLatin(info)) {
-            return type;
+    private static int capsModes(EditorInfo info) {
+        if ((info.inputType & InputType.TYPE_MASK_CLASS) != InputType.TYPE_CLASS_TEXT) {
+            return 0;
         }
-        int asked = InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
-                | InputType.TYPE_TEXT_FLAG_CAP_WORDS
-                | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES;
-        if ((type & asked) != 0) {
-            return type;
+        switch (info.inputType & InputType.TYPE_MASK_VARIATION) {
+            case InputType.TYPE_TEXT_VARIATION_PASSWORD:
+            case InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD:
+            case InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD:
+            case InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS:
+            case InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS:
+                return 0;
+            default:
+                break;
         }
-        return type | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES;
+        int asked = info.inputType
+                & (InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
+                        | InputType.TYPE_TEXT_FLAG_CAP_WORDS
+                        | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        return asked != 0 ? asked : InputType.TYPE_TEXT_FLAG_CAP_SENTENCES;
+    }
+
+    /**
+     * Whether the next letter typed at the end of {@code before} is a capital.
+     *
+     * <p>Worked out here rather than asked of the editor. {@code
+     * getCursorCapsMode} is the editor's own answer, and an editor that has not
+     * implemented it answers "no capital" everywhere, which is why the first
+     * letter stayed lower case in some apps - a browser's search box among
+     * them. The rules are short enough to apply to text read back directly.
+     *
+     * <p>{@code wholeText} says whether {@code before} is all the text there
+     * is. Only so much is read back, and running out of buffer looks exactly
+     * like the start of the field; without this, every sentence long enough to
+     * fill the buffer would capitalise in the middle.
+     */
+    private static boolean wantsCapital(CharSequence before, boolean wholeText,
+            int modes) {
+        if ((modes & InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS) != 0) {
+            return true;
+        }
+        int at = before.length();
+        while (at > 0 && isWordBreak(before.charAt(at - 1))) {
+            at--;
+        }
+        if (at == 0) {
+            return wholeText;
+        }
+        if ((modes & InputType.TYPE_TEXT_FLAG_CAP_WORDS) != 0) {
+            return at < before.length();
+        }
+        char ends = before.charAt(at - 1);
+        return ends == '.' || ends == '!' || ends == '?' || ends == '\n';
     }
 
     @Override
@@ -811,12 +866,22 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         if (contextWord == null || completions.size() < 2) {
             return completions;
         }
+        List<String> usual =
+                latinPairs == null ? Collections.<String>emptyList()
+                                   : latinPairs.after(contextWord);
         List<String> seen = new ArrayList<>();
+        List<String> known = new ArrayList<>();
         List<String> rest = new ArrayList<>();
         for (String word : completions) {
-            (nextWords.timesAfter(contextWord, word) > 0 ? seen : rest).add(word);
+            if (nextWords.timesAfter(contextWord, word) > 0) {
+                seen.add(word);
+            } else if (usual.contains(word)) {
+                known.add(word);
+            } else {
+                rest.add(word);
+            }
         }
-        if (seen.isEmpty()) {
+        if (seen.isEmpty() && known.isEmpty()) {
             return completions;
         }
         final String context = contextWord;
@@ -826,6 +891,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                 return nextWords.timesAfter(context, b) - nextWords.timesAfter(context, a);
             }
         });
+        seen.addAll(known);
         seen.addAll(rest);
         return seen;
     }
@@ -866,15 +932,22 @@ public class KhmerSequenceInputMethodService extends InputMethodService
      */
     private List<String> whatComesAfter(String word) {
         List<String> found = new ArrayList<>(nextWords.after(word, MAX_CANDIDATES));
-        for (String common : nextWords.after(EVERYWHERE, MAX_CANDIDATES)) {
+        if (latinPairs != null) {
+            addUnseen(found, latinPairs.after(word), word);
+        }
+        addUnseen(found, nextWords.after(EVERYWHERE, MAX_CANDIDATES), word);
+        return found;
+    }
+
+    private static void addUnseen(List<String> found, List<String> extra, String word) {
+        for (String candidate : extra) {
             if (found.size() >= MAX_CANDIDATES) {
-                break;
+                return;
             }
-            if (!found.contains(common) && !common.equals(word)) {
-                found.add(common);
+            if (!found.contains(candidate) && !candidate.equals(word)) {
+                found.add(candidate);
             }
         }
-        return found;
     }
 
     private void saveLearnedWords() {

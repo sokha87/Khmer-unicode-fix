@@ -24,9 +24,15 @@ ASSETS = os.path.join(os.path.dirname(HERE), 'app/src/main/assets')
 KHMER_LIMIT = 20000
 ENGLISH_LIMIT = 20000
 
-# Suggesting a one-letter word helps nobody, and the long tail of a subtitle
-# corpus is mostly noise.
+# The long tail of a subtitle corpus is mostly noise, and a one-letter token is
+# usually the wreckage of a contraction ("s", "t", "ll") rather than a word.
 MIN_LENGTH = 2
+
+# The two that really are words. Leaving them out cost more than the noise they
+# keep company with: "i" and "a" are among the commonest words in English, so
+# without them the keyboard cannot complete them, cannot capitalise "I" from the
+# word list, and cannot learn what follows either of them.
+SHORT_WORDS = ('a', 'i')
 
 
 def read_ranked(path, limit, keep):
@@ -38,7 +44,7 @@ def read_ranked(path, limit, keep):
             if not parts:
                 continue
             word = parts[0].strip()
-            if len(word) < MIN_LENGTH or not keep(word):
+            if (len(word) < MIN_LENGTH and word not in SHORT_WORDS) or not keep(word):
                 continue
             if word not in ranked:
                 ranked[word] = len(ranked)
