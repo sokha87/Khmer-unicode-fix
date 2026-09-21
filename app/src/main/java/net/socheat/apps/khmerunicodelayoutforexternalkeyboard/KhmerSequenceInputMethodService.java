@@ -142,8 +142,9 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     /** The pair last learned, so a cursor move does not count it twice. */
     private String lastLearned;
 
-    /** The cursor position last reported, which makes {@link #lastLearned} unique. */
-    private int cursorAt;
+    /** The context under which a word is counted regardless of what preceded it. */
+    private static final String EVERYWHERE = "\u0000";
+
     private LinearLayout candidateStrip;
     private LinearLayout suggestionStrip;
     private HorizontalScrollView suggestionScroller;
@@ -540,7 +541,6 @@ public class KhmerSequenceInputMethodService extends InputMethodService
             int newSelEnd, int candidatesStart, int candidatesEnd) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd,
                 candidatesStart, candidatesEnd);
-        cursorAt = newSelEnd;
         updateShiftFromCursor();
         // Fires for physical typing too, which is how that gets suggestions.
         updateCandidates();
@@ -585,6 +585,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                     applyKeyboard();
                 }
                 updateShiftFromCursor();
+                updateCandidates();
         }
     }
 
@@ -596,6 +597,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
             shifted = false;
             applyKeyboard();
         }
+        updateCandidates();
     }
 
     private void commit(String text) {
@@ -711,17 +713,20 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                     List<String> tail = wordsBefore(before, 2);
                     if (!tail.isEmpty()) {
                         String finished = tail.get(0);
-                        if (tail.size() > 1) {
-                            remember(tail.get(1), finished);
-                        }
+                        remember(tail.size() > 1 ? tail.get(1) : null, finished, before);
                         if (isWordBreak(last)) {
                             contextWord = finished;
-                            suggestions = nextWords.after(finished, MAX_CANDIDATES);
+                            suggestions = whatComesAfter(finished);
                             separator = isKhmer(finished.charAt(finished.length() - 1))
                                     ? KHMER_WORD_BREAK : " ";
                         }
                     }
                 }
+            } else {
+                // An empty field: nothing to complete and nothing to follow,
+                // but the words written most often are still a fair opening.
+                suggestions = nextWords.after(EVERYWHERE, MAX_CANDIDATES);
+                separator = latinLayer ? " " : KHMER_WORD_BREAK;
             }
         }
         note(PREF_LAST_LOOKUP, "strip=" + (candidateStrip == null ? "not created" : "ready")
@@ -825,14 +830,51 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         return seen;
     }
 
-    /** Counts a word pair once, however often the cursor passes over it. */
-    private void remember(String previous, String word) {
-        String key = cursorAt + "\u0000" + previous + "\u0000" + word;
+    /**
+     * Counts a word once, however often the cursor passes back over it.
+     *
+     * <p>The text leading up to the word says where it was written, so the same
+     * pair written twice in a sentence counts twice, while the cursor wandering
+     * back over one counts once. The cursor position would have done as well,
+     * but it is only known when the editor reports it, and the strip no longer
+     * waits for that.
+     */
+    private void remember(String previous, String word, CharSequence where) {
+        String key = where.toString();
         if (key.equals(lastLearned)) {
             return;
         }
         lastLearned = key;
-        nextWords.learn(previous, word);
+        if (previous != null) {
+            nextWords.learn(previous, word);
+        }
+        // Also counted without any context, which is what the strip falls back
+        // on before it has learned enough to say what follows what.
+        nextWords.learn(EVERYWHERE, word);
+    }
+
+    /**
+     * What to offer once a word is finished: the words that have followed it,
+     * topped up with the words written most often anywhere.
+     *
+     * <p>The top-up is what makes this worth anything on the first day. A
+     * count of what follows what is only as good as what it has seen, and it
+     * has seen nothing until the same pair has been written twice, so on its
+     * own the strip would sit empty for a long while. The words someone writes
+     * most often are a fair guess in the meantime, and picking one teaches the
+     * pair, so the strip sharpens as it is used.
+     */
+    private List<String> whatComesAfter(String word) {
+        List<String> found = new ArrayList<>(nextWords.after(word, MAX_CANDIDATES));
+        for (String common : nextWords.after(EVERYWHERE, MAX_CANDIDATES)) {
+            if (found.size() >= MAX_CANDIDATES) {
+                break;
+            }
+            if (!found.contains(common) && !common.equals(word)) {
+                found.add(common);
+            }
+        }
+        return found;
     }
 
     private void saveLearnedWords() {
@@ -912,7 +954,12 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         replacing = 0;
         replacingCapital = false;
         separator = "";
-        showCandidates(Collections.<String>emptyList());
+        // Work the strip out again from the text as it now stands, rather than
+        // clearing it and waiting for onUpdateSelection. Not every editor
+        // reports a selection change promptly, and one that does not used to
+        // leave the strip blank from the first pick onwards - which is exactly
+        // the moment the next word should be offered.
+        updateCandidates();
         // A word just ended, so the next one may want a capital.
         updateShiftFromCursor();
     }
