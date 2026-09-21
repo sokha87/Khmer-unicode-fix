@@ -134,6 +134,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
 
     /** How much of the text before the cursor the current suggestion replaces. */
     private int replacing;
+    private boolean replacingCapital;
 
     // ---------------------------------------------------------------- on-screen
 
@@ -448,9 +449,8 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     }
 
     /**
-     * Turns shift on where the field says a capital belongs — the start of the
-     * text, after a full stop, or every word, according to the editor's own
-     * capitalisation flags. Khmer has no case, so this only applies to Latin.
+     * Turns shift on where a capital belongs — the start of the text and
+     * after a full stop. Khmer has no case, so this only applies to Latin.
      */
     private void updateShiftFromCursor() {
         if (numericField || !latinLayer || editor == null) {
@@ -460,11 +460,37 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         if (connection == null) {
             return;
         }
-        boolean wanted = connection.getCursorCapsMode(editor.inputType) != 0;
+        boolean wanted = connection.getCursorCapsMode(capsInputType(editor)) != 0;
         if (wanted != shifted) {
             shifted = wanted;
             applyKeyboard();
         }
+    }
+
+    /**
+     * The input type to ask {@link InputConnection#getCursorCapsMode} about.
+     *
+     * <p>That call only reports a capital where the field asked for one, and
+     * most fields ask for nothing at all — which is why the first letter of a
+     * message was staying lower case. A sentence begins with a capital whether
+     * or not the app remembered to say so, so sentence capitalisation is
+     * supplied here for ordinary prose fields. Fields that already state a
+     * preference keep it, and the ones where a capital would be wrong —
+     * passwords, e-mail addresses, URLs — are left alone.
+     */
+    private static int capsInputType(EditorInfo info) {
+        int type = info.inputType;
+        if ((type & InputType.TYPE_MASK_CLASS) != InputType.TYPE_CLASS_TEXT
+                || wantsLatin(info)) {
+            return type;
+        }
+        int asked = InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
+                | InputType.TYPE_TEXT_FLAG_CAP_WORDS
+                | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES;
+        if ((type & asked) != 0) {
+            return type;
+        }
+        return type | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES;
     }
 
     @Override
@@ -596,6 +622,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     private void updateCandidates() {
         List<String> suggestions = Collections.emptyList();
         replacing = 0;
+        replacingCapital = false;
 
         InputConnection connection = getCurrentInputConnection();
         if (connection != null && suggestionsEnabled()) {
@@ -610,6 +637,9 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                     String word = before.subSequence(start, before.length()).toString();
                     suggestions = latinWords.completions(word.toLowerCase(), MAX_CANDIDATES);
                     replacing = word.length();
+                    // The word list is lower case; a word typed with a capital
+                    // should not lose it by being picked from the strip.
+                    replacingCapital = Character.isUpperCase(word.charAt(0));
                 } else if (isKhmer(last) && khmerWords != null) {
                     int start = before.length();
                     while (start > 0 && isKhmer(before.charAt(start - 1))) {
@@ -690,6 +720,9 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         if (connection == null) {
             return;
         }
+        if (replacingCapital && suggestion.length() > 0) {
+            suggestion = Character.toUpperCase(suggestion.charAt(0)) + suggestion.substring(1);
+        }
         connection.beginBatchEdit();
         if (replacing > 0) {
             connection.deleteSurroundingText(replacing, 0);
@@ -697,6 +730,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         connection.commitText(suggestion, 1);
         connection.endBatchEdit();
         replacing = 0;
+        replacingCapital = false;
         showCandidates(Collections.<String>emptyList());
     }
 

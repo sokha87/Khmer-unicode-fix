@@ -67,8 +67,20 @@ final class Dictionary {
     }
 
     /**
-     * @return up to {@code limit} words starting with {@code prefix}, most
-     *         common first. The prefix itself is not offered back.
+     * How much a completion is set back by each character it adds to what has
+     * been typed, measured in places on the frequency list. Frequency alone
+     * answers "what is the commonest word starting with this?", which is not
+     * the question being asked: with "you" typed, "yourself" is a worse guess
+     * than "your" however common it is, because it is a longer bet on what has
+     * not been typed yet. A few hundred places per character is enough to keep
+     * the near misses in front without letting a rare short word win.
+     */
+    private static final int LENGTH_PENALTY = 500;
+
+    /**
+     * @return up to {@code limit} words starting with {@code prefix}, the
+     *         likeliest first. A prefix that is itself a word leads, since the
+     *         word already typed is the best reading of it.
      */
     List<String> completions(String prefix, int limit) {
         List<String> found = new ArrayList<>();
@@ -79,21 +91,29 @@ final class Dictionary {
         if (from < 0) {
             from = -from - 1;      // the insertion point is the first match
         }
+        final int typed = prefix.length();
         final List<Integer> indices = new ArrayList<>();
         for (int i = from; i < words.length && words[i].startsWith(prefix); i++) {
-            if (!words[i].equals(prefix)) {
-                indices.add(i);
-            }
+            indices.add(i);
         }
         Collections.sort(indices, new Comparator<Integer>() {
             @Override
             public int compare(Integer a, Integer b) {
-                return ranks[a] - ranks[b];
+                return score(a, typed) - score(b, typed);
             }
         });
         for (int i = 0; i < indices.size() && found.size() < limit; i++) {
             found.add(words[indices.get(i)]);
         }
         return found;
+    }
+
+    /** Lower is a better guess; see {@link #LENGTH_PENALTY}. */
+    private int score(int index, int typed) {
+        int extra = words[index].length() - typed;
+        if (extra == 0) {
+            return -1;             // what has been typed is a word in its own right
+        }
+        return ranks[index] + extra * LENGTH_PENALTY;
     }
 }

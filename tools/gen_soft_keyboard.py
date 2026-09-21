@@ -147,20 +147,41 @@ def check_rows_fit(body):
 
 
 def build_symbols(base_row, shift_row, letters_label):
-    """The page behind ?123: the old number row, both layers, plus a way back."""
+    """The page behind ?123: the old number row, both layers, plus a way back.
+
+    The number row has thirteen keys, and thirteen keys across a screen are
+    about 7% wide each - narrower than a fingertip, which is what "need bigger
+    key" was about. The digits are what this page is reached for, so they get a
+    row of ten to themselves at the full 10% each, their shifted symbols get
+    the next row, and the six keys either side of the digits (` - = and their
+    shifted forms) share a third row at better than 13% each.
+    """
+    # Index 0 is `, 1..10 are the digits 1-0, 11 and 12 are - and =.
+    digits, shifted_digits = base_row[1:11], shift_row[1:11]
+    edges = [base_row[0], base_row[11], base_row[12],
+             shift_row[0], shift_row[11], shift_row[12]]
+
     out = [HEADER]
-    for row in (base_row, shift_row):
+    for row in (digits, shifted_digits):
         width = '%.2f%%p' % (100.0 / len(row))
         out.append('    <Row>\n')
         for label in row:
             out.append(key(label, width=width))
         out.append('    </Row>\n')
-    out.append('    <Row android:rowEdgeFlags="bottom">\n')
-    out.append(special(KEYCODE_TO_LETTERS, letters_label, '18%p'))
-    out.append(key(' ', width='40%p'))
-    out.append(special(KEYCODE_DELETE, '\u232b', '18%p',
+
+    # Backspace rides this row so the bottom row can give space more room.
+    width = '%.2f%%p' % ((100.0 - SHIFT_WIDTH) / len(edges))
+    out.append('    <Row>\n')
+    for label in edges:
+        out.append(key(label, width=width))
+    out.append(special(KEYCODE_DELETE, '\u232b', '%.2f%%p' % SHIFT_WIDTH,
                        'android:isRepeatable="true"'))
-    out.append(special(KEYCODE_DONE, '\u23ce', '24%p'))
+    out.append('    </Row>\n')
+
+    out.append('    <Row android:rowEdgeFlags="bottom">\n')
+    out.append(special(KEYCODE_TO_LETTERS, letters_label, '20%p'))
+    out.append(key(' ', width='52%p'))
+    out.append(special(KEYCODE_DONE, '\u23ce', '28%p'))
     out.append('    </Row>\n')
     out.append('</Keyboard>\n')
     body = ''.join(out)
