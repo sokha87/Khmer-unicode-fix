@@ -136,6 +136,18 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     private int replacing;
     private boolean replacingCapital;
 
+    /**
+     * What to put after a picked suggestion so the next word can be typed
+     * straight away. Latin takes a space. Khmer is written without spaces
+     * between words, so a space there would break the text; it takes a zero
+     * width space instead, which is the Khmer word boundary - invisible, it
+     * lets a line break fall in the right place, and it shows the next lookup
+     * where the new word starts.
+     */
+    private String separator = "";
+
+    private static final String KHMER_WORD_BREAK = "\u200b";
+
     // ---------------------------------------------------------------- on-screen
 
     @Override
@@ -623,6 +635,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         List<String> suggestions = Collections.emptyList();
         replacing = 0;
         replacingCapital = false;
+        separator = "";
 
         InputConnection connection = getCurrentInputConnection();
         if (connection != null && suggestionsEnabled()) {
@@ -640,6 +653,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                     // The word list is lower case; a word typed with a capital
                     // should not lose it by being picked from the strip.
                     replacingCapital = Character.isUpperCase(word.charAt(0));
+                    separator = " ";
                 } else if (isKhmer(last) && khmerWords != null) {
                     int start = before.length();
                     while (start > 0 && isKhmer(before.charAt(start - 1))) {
@@ -651,6 +665,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                         if (!found.isEmpty()) {
                             suggestions = found;
                             replacing = tail.length();
+                            separator = KHMER_WORD_BREAK;
                             break;
                         }
                     }
@@ -714,7 +729,10 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                 .edit().putString(key, value).apply();
     }
 
-    /** Swaps the partial word for the chosen one. */
+    /**
+     * Swaps the partial word for the chosen one, and closes it off so typing
+     * can carry straight on into the next word - see {@link #separator}.
+     */
     private void pick(String suggestion) {
         InputConnection connection = getCurrentInputConnection();
         if (connection == null) {
@@ -727,11 +745,14 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         if (replacing > 0) {
             connection.deleteSurroundingText(replacing, 0);
         }
-        connection.commitText(suggestion, 1);
+        connection.commitText(suggestion + separator, 1);
         connection.endBatchEdit();
         replacing = 0;
         replacingCapital = false;
+        separator = "";
         showCandidates(Collections.<String>emptyList());
+        // A word just ended, so the next one may want a capital.
+        updateShiftFromCursor();
     }
 
     // ---------------------------------------------------------------- physical
