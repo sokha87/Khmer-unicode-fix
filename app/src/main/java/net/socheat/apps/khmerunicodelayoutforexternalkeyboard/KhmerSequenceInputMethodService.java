@@ -4,10 +4,14 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.hardware.input.InputManager;
-import android.text.InputType;
+import android.os.Handler;
+import android.os.Looper;
 import android.inputmethodservice.InputMethodService;
 import android.inputmethodservice.Keyboard;
 import android.inputmethodservice.KeyboardView;
+import android.text.InputType;
+import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.View;
@@ -15,6 +19,12 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.view.inputmethod.InputMethodSubtype;
+import android.widget.HorizontalScrollView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Khmer NiDA keyboard: the five sequence keys on a physical keyboard, and a full
@@ -72,6 +82,9 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     /** The service's last visibility decision, reported by {@link LanguagesActivity}. */
     static final String PREF_LAST_DECISION = "last_decision";
 
+    /** Offer word suggestions while typing. */
+    static final String PREF_SUGGESTIONS = "suggestions";
+
     /** On-screen keyboard appearance: {@link #THEME_DEVICE}, dark or light. */
     static final String PREF_THEME = "theme";
 
@@ -101,6 +114,13 @@ public class KhmerSequenceInputMethodService extends InputMethodService
 
     /** The field being edited, kept for its input type. */
     private EditorInfo editor;
+
+    private Dictionary khmerWords;
+    private Dictionary latinWords;
+    private LinearLayout candidateStrip;
+
+    /** How much of the text before the cursor the current suggestion replaces. */
+    private int replacing;
 
     // ---------------------------------------------------------------- on-screen
 
@@ -142,6 +162,37 @@ public class KhmerSequenceInputMethodService extends InputMethodService
             };
             inputManager.registerInputDeviceListener(deviceListener, null);
         }
+        loadDictionaries();
+    }
+
+    /**
+     * Reads the word lists in the background. They are a few hundred kilobytes
+     * each, and an input method must not make the first keystroke wait.
+     */
+    private void loadDictionaries() {
+        final Handler main = new Handler(Looper.getMainLooper());
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                Dictionary khmer = null;
+                Dictionary latin = null;
+                try {
+                    khmer = Dictionary.load(getAssets(), "dict_km.txt");
+                    latin = Dictionary.load(getAssets(), "dict_en.txt");
+                } catch (Exception e) {
+                    // Suggestions are optional; typing must work regardless.
+                }
+                final Dictionary loadedKhmer = khmer;
+                final Dictionary loadedLatin = latin;
+                main.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        khmerWords = loadedKhmer;
+                        latinWords = loadedLatin;
+                    }
+                });
+            }
+        }, "dictionary-load").start();
     }
 
     @Override
@@ -264,6 +315,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         shifted = false;
         applyKeyboard();
         updateShiftFromCursor();
+        updateCandidates();
         hideIfPhysicalKeyboard();
     }
 
@@ -376,6 +428,8 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd,
                 candidatesStart, candidatesEnd);
         updateShiftFromCursor();
+        // Fires for physical typing too, which is how that gets suggestions.
+        updateCandidates();
     }
 
     @Override
@@ -432,6 +486,134 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     @Override public void swipeRight() { }
     @Override public void swipeDown() { }
     @Override public void swipeUp() { }
+
+
+    // ------------------------------------------------------------ suggestions
+
+    private static final int MAX_CANDIDATES = 8;
+
+    /** How far back to look for the word being typed. */
+    private static final int LOOKBEHIND = 24;
+
+    /**
+     * The strip of suggestions.
+     *
+     * <p>Deliberately a candidates view rather than part of the keyboard: the
+     * platform can show it while the input view is hidden, which is what makes
+     * suggestions work for someone typing on the physical keyboard.
+     */
+    @Override
+    public View onCreateCandidatesView() {
+        candidateStrip = new LinearLayout(this);
+        candidateStrip.setOrientation(LinearLayout.HORIZONTAL);
+        HorizontalScrollView scroller = new HorizontalScrollView(this);
+        scroller.setHorizontalScrollBarEnabled(false);
+        scroller.addView(candidateStrip);
+        return scroller;
+    }
+
+    private static boolean isKhmer(char c) {
+        return c >= '\u1780' && c <= '\u17FF';
+    }
+
+    private static boolean isLatinLetter(char c) {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+    }
+
+    /**
+     * Offers completions for whatever is being typed before the cursor.
+     *
+     * <p>Nothing here alters the text. The characters are committed exactly as
+     * before and simply read back, so the physical keyboard's path through the
+     * key character map is untouched; picking a suggestion is what edits, by
+     * deleting the partial word and committing the whole one.
+     *
+     * <p>Khmer writes without spaces between words, so where a word begins is
+     * genuinely ambiguous. The longest recent run of Khmer is tried as a
+     * starting point, then progressively shorter tails of it, and the first
+     * that the dictionary recognises wins - which favours the most context that
+     * still matches something real.
+     */
+    private void updateCandidates() {
+        List<String> suggestions = Collections.emptyList();
+        replacing = 0;
+
+        InputConnection connection = getCurrentInputConnection();
+        if (connection != null && suggestionsEnabled()) {
+            CharSequence before = connection.getTextBeforeCursor(LOOKBEHIND, 0);
+            if (before != null && before.length() > 0) {
+                char last = before.charAt(before.length() - 1);
+                if (isLatinLetter(last) && latinWords != null) {
+                    int start = before.length();
+                    while (start > 0 && isLatinLetter(before.charAt(start - 1))) {
+                        start--;
+                    }
+                    String word = before.subSequence(start, before.length()).toString();
+                    suggestions = latinWords.completions(word.toLowerCase(), MAX_CANDIDATES);
+                    replacing = word.length();
+                } else if (isKhmer(last) && khmerWords != null) {
+                    int start = before.length();
+                    while (start > 0 && isKhmer(before.charAt(start - 1))) {
+                        start--;
+                    }
+                    for (int from = start; from < before.length(); from++) {
+                        String tail = before.subSequence(from, before.length()).toString();
+                        List<String> found = khmerWords.completions(tail, MAX_CANDIDATES);
+                        if (!found.isEmpty()) {
+                            suggestions = found;
+                            replacing = tail.length();
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        showCandidates(suggestions);
+    }
+
+    private boolean suggestionsEnabled() {
+        return getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getBoolean(PREF_SUGGESTIONS, true);
+    }
+
+    private void showCandidates(List<String> suggestions) {
+        if (candidateStrip == null) {
+            return;
+        }
+        candidateStrip.removeAllViews();
+        for (final String suggestion : suggestions) {
+            TextView view = new TextView(this);
+            view.setText(suggestion);
+            view.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+            view.setGravity(Gravity.CENTER);
+            int pad = Math.round(14 * getResources().getDisplayMetrics().density);
+            view.setPadding(pad, pad / 2, pad, pad / 2);
+            view.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    pick(suggestion);
+                }
+            });
+            candidateStrip.addView(view);
+        }
+        setCandidatesViewShown(!suggestions.isEmpty());
+    }
+
+    /** Swaps the partial word for the chosen one. */
+    private void pick(String suggestion) {
+        InputConnection connection = getCurrentInputConnection();
+        if (connection == null) {
+            return;
+        }
+        connection.beginBatchEdit();
+        if (replacing > 0) {
+            connection.deleteSurroundingText(replacing, 0);
+        }
+        connection.commitText(suggestion, 1);
+        connection.endBatchEdit();
+        replacing = 0;
+        showCandidates(Collections.<String>emptyList());
+    }
 
     // ---------------------------------------------------------------- physical
 

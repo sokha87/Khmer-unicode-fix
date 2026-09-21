@@ -84,6 +84,21 @@ public class LanguagesActivity extends Activity {
         showWithHardKeyboard.setPadding(0, gap, 0, gap);
         column.addView(showWithHardKeyboard);
 
+        CheckBox suggestions = new CheckBox(this);
+        suggestions.setText(R.string.languages_suggestions);
+        suggestions.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        suggestions.setChecked(prefs.getBoolean(
+                KhmerSequenceInputMethodService.PREF_SUGGESTIONS, true));
+        suggestions.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton b, boolean checked) {
+                prefs.edit().putBoolean(
+                        KhmerSequenceInputMethodService.PREF_SUGGESTIONS, checked).apply();
+            }
+        });
+        suggestions.setPadding(0, 0, 0, gap);
+        column.addView(suggestions);
+
         TextView themeLabel = new TextView(this);
         themeLabel.setText(R.string.languages_theme);
         themeLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);

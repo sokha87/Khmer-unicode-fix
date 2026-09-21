@@ -23,8 +23,8 @@ ANDROID_JAR=/usr/lib/android-sdk/platforms/android-23/android.jar
 FRAMEWORK_RES=/usr/share/android-framework-res/framework-res.apk
 
 PACKAGE=net.socheat.apps.khmerunicodelayoutforexternalkeyboard
-VERSION_CODE=15
-VERSION_NAME=0.7.0
+VERSION_CODE=16
+VERSION_NAME=0.8.0
 MIN_SDK=21
 TARGET_SDK=34
 
@@ -34,6 +34,7 @@ python3 "$ROOT/tools/validate_kcm.py" \
 
 echo "==> staging resources"
 cp -r "$ROOT/app/src/main/res" "$WORK/res"
+cp -r "$ROOT/app/src/main/assets" "$WORK/assets"
 # aapt reads package and version from the manifest; the Gradle build supplies
 # them from app/build.gradle instead, so inject them for this path only.
 sed "s|<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">|<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\" package=\"$PACKAGE\" android:versionCode=\"$VERSION_CODE\" android:versionName=\"$VERSION_NAME\">\n    <uses-sdk android:minSdkVersion=\"$MIN_SDK\" android:targetSdkVersion=\"$TARGET_SDK\" />|" \
@@ -42,7 +43,7 @@ sed "s|<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">|<
 echo "==> generating R.java"
 mkdir -p "$WORK/gen"
 ( cd "$WORK" && aapt package -f -m -J gen -M AndroidManifest.xml -S res \
-      -I "$FRAMEWORK_RES" )
+      -A assets -I "$FRAMEWORK_RES" )
 
 echo "==> compiling java (source/target 8, dx cannot read newer bytecode)"
 mkdir -p "$WORK/classes"
@@ -56,7 +57,7 @@ dalvik-exchange --dex --output="$WORK/classes.dex" "$WORK/classes"
 
 echo "==> packaging resources"
 ( cd "$WORK" && aapt package -f -M AndroidManifest.xml -S res \
-      -I "$FRAMEWORK_RES" -F app.apk )
+      -A assets -I "$FRAMEWORK_RES" -F app.apk )
 ( cd "$WORK" && aapt add -f app.apk classes.dex >/dev/null )
 
 echo "==> aligning and signing"
