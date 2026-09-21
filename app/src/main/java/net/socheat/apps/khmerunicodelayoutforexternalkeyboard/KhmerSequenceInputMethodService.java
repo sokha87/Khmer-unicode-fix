@@ -107,6 +107,8 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     private Keyboard latin;
     private Keyboard latinShift;
     private Keyboard number;
+    private Keyboard khmerSymbols;
+    private Keyboard latinSymbols;
 
     /** The theme the current input view was built with. */
     private boolean viewIsDark;
@@ -118,12 +120,17 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     /** The field wants digits, so the number pad is showing. */
     private boolean numericField;
 
+    /** The ?123 page is showing instead of the letters. */
+    private boolean symbolsPage;
+
     /** The field being edited, kept for its input type. */
     private EditorInfo editor;
 
     private Dictionary khmerWords;
     private Dictionary latinWords;
     private LinearLayout candidateStrip;
+    private LinearLayout suggestionStrip;
+    private HorizontalScrollView suggestionScroller;
 
     /** How much of the text before the cursor the current suggestion replaces. */
     private int replacing;
@@ -139,6 +146,8 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         latin = new Keyboard(this, R.xml.soft_latin);
         latinShift = new Keyboard(this, R.xml.soft_latin_shift);
         number = new Keyboard(this, R.xml.soft_number);
+        khmerSymbols = new Keyboard(this, R.xml.soft_khmer_sym);
+        latinSymbols = new Keyboard(this, R.xml.soft_latin_sym);
     }
 
     @Override
@@ -309,8 +318,30 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                 viewIsDark ? R.layout.soft_keyboard_dark : R.layout.soft_keyboard_light,
                 null);
         keyboardView.setOnKeyboardActionListener(this);
+
+        // The suggestion strip sits in the input view rather than in the
+        // platform's candidates view. The candidates view is only created when
+        // the IME window is shown and is laid out outside the keyboard, which
+        // made it unreliable here; this is simply part of the keyboard.
+        suggestionStrip = new LinearLayout(this);
+        suggestionStrip.setOrientation(LinearLayout.HORIZONTAL);
+        suggestionScroller = new HorizontalScrollView(this);
+        suggestionScroller.setHorizontalScrollBarEnabled(false);
+        suggestionScroller.addView(suggestionStrip);
+        suggestionScroller.setBackgroundColor(viewIsDark ? 0xFF15151A : 0xFFE6E9EF);
+        suggestionScroller.setVisibility(View.GONE);
+
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.addView(suggestionScroller, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+        root.addView(keyboardView, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
+
         applyKeyboard();
-        return keyboardView;
+        return root;
     }
 
     @Override
@@ -372,6 +403,8 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         Keyboard keyboard;
         if (numericField) {
             keyboard = number;
+        } else if (symbolsPage) {
+            keyboard = latinLayer ? latinSymbols : khmerSymbols;
         } else if (latinLayer) {
             keyboard = shifted ? latinShift : latin;
         } else {
@@ -454,6 +487,17 @@ public class KhmerSequenceInputMethodService extends InputMethodService
             case Keyboard.KEYCODE_MODE_CHANGE:
                 latinLayer = !latinLayer;
                 shifted = false;
+                symbolsPage = false;
+                applyKeyboard();
+                return;
+            case KEYCODE_TO_SYMBOLS:
+                symbolsPage = true;
+                shifted = false;
+                applyKeyboard();
+                return;
+            case KEYCODE_TO_LETTERS:
+                symbolsPage = false;
+                shifted = false;
                 applyKeyboard();
                 return;
             case Keyboard.KEYCODE_DELETE:
@@ -501,6 +545,9 @@ public class KhmerSequenceInputMethodService extends InputMethodService
 
 
     // ------------------------------------------------------------ suggestions
+
+    private static final int KEYCODE_TO_SYMBOLS = -101;
+    private static final int KEYCODE_TO_LETTERS = -102;
 
     private static final int MAX_CANDIDATES = 8;
 
@@ -593,18 +640,31 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     }
 
     private void showCandidates(List<String> suggestions) {
-        // Set visibility even when the strip has not been created yet: the
-        // framework builds it when the window is shown, and returning early
-        // here would leave the candidates frame hidden for good.
-        setCandidatesViewShown(!suggestions.isEmpty());
+        // The strip inside the keyboard is the one that shows while the
+        // on-screen keyboard is up; the platform candidates view covers the
+        // case where it is hidden because a physical keyboard is attached.
+        fill(suggestionStrip, suggestions);
+        if (suggestionScroller != null) {
+            suggestionScroller.setVisibility(
+                    suggestions.isEmpty() ? View.GONE : View.VISIBLE);
+        }
+        setCandidatesViewShown(!suggestions.isEmpty() && !isInputViewShown());
         if (candidateStrip == null) {
             return;
         }
-        candidateStrip.removeAllViews();
+        fill(candidateStrip, suggestions);
+    }
+
+    private void fill(LinearLayout strip, List<String> suggestions) {
+        if (strip == null) {
+            return;
+        }
+        strip.removeAllViews();
         for (final String suggestion : suggestions) {
             TextView view = new TextView(this);
             view.setText(suggestion);
             view.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+            view.setTextColor(viewIsDark ? 0xFFFFFFFF : 0xFF1B1B1F);
             view.setGravity(Gravity.CENTER);
             int pad = Math.round(14 * getResources().getDisplayMetrics().density);
             view.setPadding(pad, pad / 2, pad, pad / 2);
@@ -614,7 +674,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                     pick(suggestion);
                 }
             });
-            candidateStrip.addView(view);
+            strip.addView(view);
         }
     }
 

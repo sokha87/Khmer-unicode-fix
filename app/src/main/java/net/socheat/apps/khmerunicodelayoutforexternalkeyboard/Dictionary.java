@@ -32,9 +32,13 @@ final class Dictionary {
 
     /** Reads one of the generated assets; see tools/gen_dictionaries.py. */
     static Dictionary load(AssetManager assets, String name) throws IOException {
+        return load(assets.open(name));
+    }
+
+    /** Split out from the asset path so it can be exercised off-device. */
+    static Dictionary load(InputStream stream) throws IOException {
         List<String> loadedWords = new ArrayList<>();
         List<Integer> loadedRanks = new ArrayList<>();
-        InputStream stream = assets.open(name);
         try {
             BufferedReader reader =
                     new BufferedReader(new InputStreamReader(stream, "UTF-8"), 65536);
