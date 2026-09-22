@@ -93,6 +93,29 @@ frequency wordlist.
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------
+Battambang typeface, Danh Hong
+--------------------------------------------------------------------------
+
+app/src/main/assets/battambang.ttf is Battambang-Regular.ttf from Google Fonts
+(https://github.com/google/fonts, ofl/battambang), by Danh Hong
+(https://github.com/danhhong/Battambang), used for the Khmer key labels and
+the suggestion strip.
+
+The same typeface is also distributed as "Khmer OS Battambang" under the LGPL.
+The Open Font License copy is used here instead: the OFL was written for fonts
+and permits embedding without conditions on the work the font is bundled with,
+which the LGPL's replaceability requirement does not straightforwardly allow.
+
+    Copyright 2019 The Battambang Project Authors (https://github.com/danhhong/Battambang)
+
+    This Font Software is licensed under the SIL Open Font License, Version 1.1.
+    This license is copied below, and is also available with a FAQ at:
+    http://scripts.sil.org/OFL
+
+    The full licence text accompanies the font upstream at
+    https://github.com/google/fonts/blob/main/ofl/battambang/OFL.txt
+
+--------------------------------------------------------------------------
 English next-word seed, Project Gutenberg
 --------------------------------------------------------------------------
 

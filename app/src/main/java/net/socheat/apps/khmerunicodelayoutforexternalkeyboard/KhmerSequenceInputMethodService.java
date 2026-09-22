@@ -23,7 +23,11 @@ import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import android.graphics.Paint;
+import android.graphics.Typeface;
+
 import java.io.File;
+import java.lang.reflect.Field;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -95,6 +99,9 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     /** The last suggestion lookup, reported by {@link LanguagesActivity}. */
     static final String PREF_LAST_LOOKUP = "last_lookup";
 
+    /** Whether the Khmer typeface reached the key labels; see {@link #keyFont}. */
+    static final String PREF_FONT_STATUS = "font_status";
+
     /** On-screen keyboard appearance: {@link #THEME_DEVICE}, dark or light. */
     static final String PREF_THEME = "theme";
 
@@ -135,6 +142,12 @@ public class KhmerSequenceInputMethodService extends InputMethodService
 
     /** What follows what in English at large, until the learned counts take over. */
     private Bigrams latinPairs;
+
+    /**
+     * Battambang, shipped so the keys and the suggestions read the same on
+     * every phone rather than in whatever Khmer face the vendor chose.
+     */
+    private Typeface keyFont;
 
     /** What has followed what in this phone's own typing; see {@link NextWords}. */
     private final NextWords nextWords = new NextWords();
@@ -192,7 +205,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         latin = new Keyboard(this, R.xml.soft_latin);
         latinShift = new Keyboard(this, R.xml.soft_latin_shift);
         number = new Keyboard(this, R.xml.soft_number);
-        khmerSymbols = new Keyboard(this, R.xml.soft_khmer_sym);
+        khmerSymbols = new Keyboard(this, R.xml.soft_khmer_alt);
         latinSymbols = new Keyboard(this, R.xml.soft_latin_sym);
     }
 
@@ -224,6 +237,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
             inputManager.registerInputDeviceListener(deviceListener, null);
         }
         loadDictionaries();
+        loadKeyFont();
         nextWords.load(learnedWordsFile());
     }
 
@@ -271,6 +285,49 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                 });
             }
         }, "dictionary-load").start();
+    }
+
+    private void loadKeyFont() {
+        try {
+            keyFont = Typeface.createFromAsset(getAssets(), "battambang.ttf");
+        } catch (Throwable t) {
+            // The system Khmer face will do; this must not stop the keyboard.
+            keyFont = null;
+            note(PREF_FONT_STATUS, "not loaded: " + t);
+        }
+    }
+
+    /**
+     * Puts the shipped typeface on the key labels.
+     *
+     * <p>{@link KeyboardView} paints every label with one {@link Paint} of its
+     * own and offers no way to reach it: there is no typeface attribute in its
+     * XML and no setter on the class. Reaching in for the field is the only
+     * way short of drawing every key by hand, and a platform that refuses the
+     * reach simply leaves the labels in the system face - which is correct
+     * Khmer, just not this one. The outcome is recorded either way, because a
+     * font that silently did not apply is indistinguishable from one that did
+     * not load.
+     */
+    private void applyKeyFont(KeyboardView view) {
+        if (keyFont == null || view == null) {
+            return;
+        }
+        try {
+            Field field = KeyboardView.class.getDeclaredField("mPaint");
+            field.setAccessible(true);
+            Object paint = field.get(view);
+            if (paint instanceof Paint) {
+                ((Paint) paint).setTypeface(keyFont);
+                view.invalidateAllKeys();
+                note(PREF_FONT_STATUS, "Battambang on the key labels");
+            } else {
+                note(PREF_FONT_STATUS, "key labels unchanged: no paint to set");
+            }
+        } catch (Throwable t) {
+            note(PREF_FONT_STATUS, "key labels in the system font ("
+                    + t.getClass().getSimpleName() + ")");
+        }
     }
 
     @Override
@@ -376,6 +433,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                 viewIsDark ? R.layout.soft_keyboard_dark : R.layout.soft_keyboard_light,
                 null);
         keyboardView.setOnKeyboardActionListener(this);
+        applyKeyFont(keyboardView);
 
         // The suggestion strip sits in the input view rather than in the
         // platform's candidates view. The candidates view is only created when
@@ -1083,6 +1141,9 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         for (final String suggestion : suggestions) {
             TextView view = new TextView(this);
             view.setText(suggestion);
+            if (keyFont != null) {
+                view.setTypeface(keyFont);
+            }
             view.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
             view.setTextColor(viewIsDark ? 0xFFFFFFFF : 0xFF1B1B1F);
             view.setGravity(Gravity.CENTER);

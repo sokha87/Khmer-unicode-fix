@@ -84,10 +84,18 @@ def esc(text):
         out = '\\' + out
     return out
 
+# Characters with nothing to draw. They are real Khmer typing - a zero width
+# joiner or non-joiner decides whether a cluster stacks - but a key showing
+# them would be a blank key, so these are named instead. KeyboardView draws a
+# label of more than one character at its smaller label size, so they fit.
+INVISIBLE = {'\u200c': 'ZWNJ', '\u200d': 'ZWJ', '\u200b': 'ZWSP'}
+
+
 def key(label, width=None, extra=''):
     """A key that types `label`, which may be more than one code point."""
-    attrs = ['android:codes="%d"' % ord(label[0]), 'android:keyLabel="%s"' % esc(label)]
-    if len(label) > 1:
+    shown = INVISIBLE.get(label, label)
+    attrs = ['android:codes="%d"' % ord(label[0]), 'android:keyLabel="%s"' % esc(shown)]
+    if len(label) > 1 or shown != label:
         attrs.append('android:keyOutputText="%s"' % esc(label))
     if width:
         attrs.append('android:keyWidth="%s"' % width)
@@ -224,6 +232,52 @@ def build_number():
     return body
 
 
+def build_alt(rows, letters_label):
+    """The Khmer page behind ?123: the layout's AltGr layer.
+
+    A NiDA keyboard has four layers, and the third one - reached with the right
+    Alt key on a physical keyboard - is where the independent vowels live (ឯ ឫ
+    ឱ ឰ ឳ ឦ ឨ ឩ), along with the Khmer punctuation signs (៖ ៈ ៎ ៑ ៙ ៚ ៘ ៓ ៝),
+    the currency signs and the whole of Latin punctuation. None of it was
+    reachable on screen at all, which made perfectly ordinary Khmer impossible
+    to type without a physical keyboard.
+
+    This is why ?123 shows this page rather than a symbols page under Khmer:
+    the digits are back on the number row where NiDA puts them, and this layer
+    carries the punctuation a symbols page would have duplicated.
+
+    The fourth layer, shift+AltGr, is the lunar date and divination symbols
+    (U+19E0..U+19FF). They are rare enough that most fonts have no glyph for
+    them, so they are left to the physical keyboard.
+    """
+    out = [header(len(rows) + 1)]
+    for row in rows[:-1]:
+        width = '%.2f%%p' % (100.0 / len(row))
+        out.append('    <Row>\n')
+        for label in row:
+            out.append(key(label, width=width))
+        out.append('    </Row>\n')
+
+    # No shift key: there is no page for it to lead to.
+    width = '%.2f%%p' % ((100.0 - SHIFT_WIDTH) / len(rows[-1]))
+    out.append('    <Row>\n')
+    for label in rows[-1]:
+        out.append(key(label, width=width))
+    out.append(special(KEYCODE_DELETE, '\u232b', '%.2f%%p' % SHIFT_WIDTH,
+                       'android:isRepeatable="true"'))
+    out.append('    </Row>\n')
+
+    out.append('    <Row android:rowEdgeFlags="bottom">\n')
+    out.append(special(KEYCODE_TO_LETTERS, letters_label, '20%p'))
+    out.append(key(' ', width='52%p'))
+    out.append(special(KEYCODE_DONE, '\u23ce', '28%p'))
+    out.append('    </Row>\n')
+    out.append('</Keyboard>\n')
+    body = ''.join(out)
+    check_rows_fit(body)
+    return body
+
+
 def khmer_rows(layer):
     rows = []
     for row in ROWS:
@@ -241,10 +295,7 @@ targets = {
     'soft_khmer_shift.xml': build(khmer_rows('shift'), 'ABC'),
     'soft_latin.xml':       build(LATIN['base'],  KHMER_LABEL),
     'soft_latin_shift.xml': build(LATIN['shift'], KHMER_LABEL),
-    'soft_khmer_sym.xml':   build_symbols(
-        [NIDA[k]['base'] for k in NUMBER_ROW],
-        [NIDA[k].get('shift') or NIDA[k]['base'] for k in NUMBER_ROW],
-        KHMER_LABEL),
+    'soft_khmer_alt.xml':   build_alt(khmer_rows('ralt'), KHMER_LABEL),
     'soft_latin_sym.xml':   build_symbols(
         LATIN_NUMBER_ROW['base'], LATIN_NUMBER_ROW['shift'], 'ABC'),
     'soft_number.xml':      build_number(),

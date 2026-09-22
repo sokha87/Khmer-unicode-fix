@@ -273,6 +273,9 @@ public class LanguagesActivity extends Activity {
         out.append("Dictionaries: ")
            .append(prefs.getString(KhmerSequenceInputMethodService.PREF_DICT_STATUS,
                                    "(not loaded yet)")).append('\n');
+        out.append("Khmer typeface: ")
+           .append(prefs.getString(KhmerSequenceInputMethodService.PREF_FONT_STATUS,
+                                   "(the keyboard has not opened yet)")).append('\n');
         out.append("Last suggestion lookup: ")
            .append(prefs.getString(KhmerSequenceInputMethodService.PREF_LAST_LOOKUP,
                                    "(none yet)")).append('\n');
