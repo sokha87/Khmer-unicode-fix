@@ -87,7 +87,9 @@ def esc(text):
 # Characters with nothing to draw. They are real Khmer typing - a zero width
 # joiner or non-joiner decides whether a cluster stacks - but a key showing
 # them would be a blank key, so these are named instead. KeyboardView draws a
-# label of more than one character at its smaller label size, so they fit.
+# label of more than one character at its label size, which the keyboard
+# layouts set to 12sp so that four letters fit across a key of this row's
+# width; at the 14sp default "ZWNJ" runs over its neighbour.
 INVISIBLE = {'\u200c': 'ZWNJ', '\u200d': 'ZWJ', '\u200b': 'ZWSP'}
 
 
@@ -113,7 +115,7 @@ def special(code, label, width, extra=''):
 SHIFT_WIDTH = 12.0      # per cent of the row width, for shift and backspace
 
 
-def build(rows, language_label):
+def build(rows, language_label, other_page_label):
     out = [header(len(rows) + 1)]       # the rows given, plus the function row
 
     # Rows differ in length, so share each row's width out across its own keys.
@@ -140,7 +142,7 @@ def build(rows, language_label):
 
     # Function row.
     out.append('    <Row android:rowEdgeFlags="bottom">\n')
-    out.append(special(KEYCODE_TO_SYMBOLS, '?123', '18%p'))
+    out.append(special(KEYCODE_TO_SYMBOLS, other_page_label, '18%p'))
     out.append(special(KEYCODE_MODE_CHANGE, language_label, '18%p'))
     out.append(key(' ', width='40%p'))
     out.append(special(KEYCODE_DONE, '\u23ce', '24%p'))
@@ -291,10 +293,12 @@ def khmer_rows(layer):
 KHMER_LABEL = 'ខ្មែរ'
 
 targets = {
-    'soft_khmer.xml':       build(khmer_rows('base'),  'ABC'),
-    'soft_khmer_shift.xml': build(khmer_rows('shift'), 'ABC'),
-    'soft_latin.xml':       build(LATIN['base'],  KHMER_LABEL),
-    'soft_latin_shift.xml': build(LATIN['shift'], KHMER_LABEL),
+    # Under Khmer that key opens the layout's AltGr layer, not a numbers page
+    # - the digits are on the number row - so it says what it does.
+    'soft_khmer.xml':       build(khmer_rows('base'),  'ABC', 'Alt'),
+    'soft_khmer_shift.xml': build(khmer_rows('shift'), 'ABC', 'Alt'),
+    'soft_latin.xml':       build(LATIN['base'],  KHMER_LABEL, '?123'),
+    'soft_latin_shift.xml': build(LATIN['shift'], KHMER_LABEL, '?123'),
     'soft_khmer_alt.xml':   build_alt(khmer_rows('ralt'), KHMER_LABEL),
     'soft_latin_sym.xml':   build_symbols(
         LATIN_NUMBER_ROW['base'], LATIN_NUMBER_ROW['shift'], 'ABC'),

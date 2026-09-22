@@ -18,4 +18,5 @@
     android:keyTextColor="#FFFFFFFF"
     android:shadowColor="#00000000"
     android:shadowRadius="0"
-    android:keyPreviewLayout="@layout/key_preview" />
+    android:keyPreviewLayout="@layout/key_preview"
+    android:labelTextSize="12sp" />
