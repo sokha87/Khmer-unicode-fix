@@ -12,6 +12,7 @@ import android.inputmethodservice.KeyboardView;
 import android.text.InputType;
 import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.ViewGroup;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.View;
@@ -19,6 +20,9 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.view.inputmethod.InputMethodSubtype;
+import android.widget.AdapterView;
+import android.widget.BaseAdapter;
+import android.widget.GridView;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -99,6 +103,12 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     /** The last suggestion lookup, reported by {@link LanguagesActivity}. */
     static final String PREF_LAST_LOOKUP = "last_lookup";
 
+    /** The emoji used most recently, so they lead the grid. */
+    static final String PREF_RECENT_EMOJI = "recent_emoji";
+
+    /** How many emoji loaded, and how many the phone could not draw. */
+    static final String PREF_EMOJI_STATUS = "emoji_status";
+
     /** Whether the Khmer typeface reached the key labels; see {@link #keyFont}. */
     static final String PREF_FONT_STATUS = "font_status";
 
@@ -133,6 +143,15 @@ public class KhmerSequenceInputMethodService extends InputMethodService
 
     /** The ?123 page is showing instead of the letters. */
     private boolean symbolsPage;
+
+    /** The emoji grid is showing instead of the keyboard. */
+    private boolean emojiPage;
+
+    private Emoji emoji;
+    private View emojiPanel;
+    private GridView emojiGrid;
+    private EmojiAdapter emojiAdapter;
+    private LinearLayout emojiTabs;
 
     /** The field being edited, kept for its input type. */
     private EditorInfo editor;
@@ -263,6 +282,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                     khmer = Dictionary.load(getAssets(), "dict_km.txt");
                     latin = Dictionary.load(getAssets(), "dict_en.txt");
                     pairs = Bigrams.load(getAssets(), "bigrams_en.txt");
+                    loadEmoji();
                     status = "loaded (" + khmer.size() + " Khmer, "
                             + latin.size() + " English, "
                             + pairs.size() + " English pairs)";
@@ -447,6 +467,9 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         suggestionScroller.setBackgroundColor(viewIsDark ? 0xFF15151A : 0xFFE6E9EF);
         suggestionScroller.setVisibility(View.GONE);
 
+        emojiPanel = createEmojiPanel();
+        emojiPanel.setVisibility(View.GONE);
+
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.addView(suggestionScroller, new LinearLayout.LayoutParams(
@@ -455,9 +478,272 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         root.addView(keyboardView, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT));
+        root.addView(emojiPanel, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                getResources().getDimensionPixelSize(R.dimen.keyboard_height)));
 
+        emojiPage = false;
         applyKeyboard();
         return root;
+    }
+
+    // -------------------------------------------------------------------- emoji
+
+    private void loadEmoji() {
+        try {
+            // Asked of a plain Paint, not the keyboard's: what matters is what
+            // the system font stack can draw, and Battambang has no emoji.
+            emoji = Emoji.load(getAssets(), "emoji.txt", new Paint());
+            note(PREF_EMOJI_STATUS, emoji.size() + " this phone can draw, in "
+                    + emoji.groups().size() + " groups");
+        } catch (Throwable t) {
+            emoji = null;
+            note(PREF_EMOJI_STATUS, "FAILED: " + t);
+        }
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    /**
+     * The emoji grid: a row of group tabs, the emoji themselves, and a bottom
+     * row to get back to the letters.
+     *
+     * <p>Not a {@link Keyboard}, because seventeen hundred emoji are not a
+     * keyboard: they want scrolling, tabs and a grid that reflows to the width
+     * of the phone, none of which a fixed grid of keys can do.
+     */
+    private View createEmojiPanel() {
+        int face = viewIsDark ? 0xFFFFFFFF : 0xFF1B1B1F;
+
+        emojiTabs = new LinearLayout(this);
+        emojiTabs.setOrientation(LinearLayout.HORIZONTAL);
+        HorizontalScrollView tabScroller = new HorizontalScrollView(this);
+        tabScroller.setHorizontalScrollBarEnabled(false);
+        tabScroller.addView(emojiTabs);
+
+        emojiAdapter = new EmojiAdapter();
+        emojiGrid = new GridView(this);
+        emojiGrid.setNumColumns(GridView.AUTO_FIT);
+        emojiGrid.setColumnWidth(dp(44));
+        emojiGrid.setStretchMode(GridView.STRETCH_COLUMN_WIDTH);
+        emojiGrid.setAdapter(emojiAdapter);
+        emojiGrid.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int at, long id) {
+                String chosen = emojiAdapter.at(at);
+                if (chosen != null) {
+                    commit(chosen);
+                    rememberEmoji(chosen);
+                }
+            }
+        });
+
+        LinearLayout bottom = new LinearLayout(this);
+        bottom.setOrientation(LinearLayout.HORIZONTAL);
+        bottom.addView(panelButton(
+                latinLayer ? "ABC" : "\u1781\u17d2\u1798\u17c2\u179a", 2f, face,
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        showEmoji(false);
+                    }
+                }));
+        bottom.addView(panelButton(" ", 4f, face, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                commit(" ");
+                updateCandidates();
+            }
+        }));
+        bottom.addView(panelButton("\u232b", 2f, face, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL);
+                forget(1);
+                updateCandidates();
+            }
+        }));
+        bottom.addView(panelButton("\u23ce", 2f, face, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (!sendDefaultEditorAction(true)) {
+                    sendDownUpKeyEvents(KeyEvent.KEYCODE_ENTER);
+                }
+            }
+        }));
+
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setBackgroundColor(viewIsDark ? 0xFF1C1C1E : 0xFFEDEFF3);
+        panel.addView(tabScroller, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(36)));
+        panel.addView(emojiGrid, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+        panel.addView(bottom, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(46)));
+        return panel;
+    }
+
+    private TextView panelButton(String label, float weight, int face,
+            View.OnClickListener onClick) {
+        TextView view = new TextView(this);
+        view.setText(label);
+        view.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        view.setTextColor(face);
+        view.setGravity(Gravity.CENTER);
+        view.setBackgroundResource(
+                viewIsDark ? R.drawable.key_dark : R.drawable.key_light);
+        view.setOnClickListener(onClick);
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, weight);
+        view.setLayoutParams(params);
+        return view;
+    }
+
+    /** Fills the tab row and shows the group at {@code at}. */
+    private void showEmojiGroup(int at) {
+        List<Emoji.Group> groups = emojiGroups();
+        if (groups.isEmpty()) {
+            return;
+        }
+        int wanted = Math.max(0, Math.min(at, groups.size() - 1));
+        emojiAdapter.setItems(groups.get(wanted).emoji);
+        emojiGrid.setSelection(0);
+        int face = viewIsDark ? 0xFFFFFFFF : 0xFF1B1B1F;
+        emojiTabs.removeAllViews();
+        for (int i = 0; i < groups.size(); i++) {
+            final int index = i;
+            TextView tab = new TextView(this);
+            tab.setText(groups.get(i).emoji.get(0));
+            tab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+            tab.setTextColor(face);
+            tab.setGravity(Gravity.CENTER);
+            int pad = dp(12);
+            tab.setPadding(pad, 0, pad, 0);
+            if (i == wanted) {
+                tab.setBackgroundColor(viewIsDark ? 0xFF3A3A3F : 0xFFD3D8E2);
+            }
+            tab.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    showEmojiGroup(index);
+                }
+            });
+            emojiTabs.addView(tab, new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.MATCH_PARENT));
+        }
+    }
+
+    /** The shipped groups, with whatever has been used recently in front. */
+    private List<Emoji.Group> emojiGroups() {
+        if (emoji == null) {
+            return Collections.emptyList();
+        }
+        List<String> recent = recentEmoji();
+        if (recent.isEmpty()) {
+            return emoji.groups();
+        }
+        List<Emoji.Group> groups = new ArrayList<>();
+        groups.add(new Emoji.Group("Recent", recent));
+        groups.addAll(emoji.groups());
+        return groups;
+    }
+
+    private List<String> recentEmoji() {
+        String saved = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getString(PREF_RECENT_EMOJI, "");
+        List<String> recent = new ArrayList<>();
+        if (saved != null && saved.length() > 0) {
+            for (String one : saved.split(" ")) {
+                if (one.length() > 0) {
+                    recent.add(one);
+                }
+            }
+        }
+        return recent;
+    }
+
+    private void rememberEmoji(String chosen) {
+        List<String> recent = recentEmoji();
+        recent.remove(chosen);
+        recent.add(0, chosen);
+        while (recent.size() > RECENT_EMOJI) {
+            recent.remove(recent.size() - 1);
+        }
+        StringBuilder out = new StringBuilder();
+        for (String one : recent) {
+            if (out.length() > 0) {
+                out.append(' ');
+            }
+            out.append(one);
+        }
+        note(PREF_RECENT_EMOJI, out.toString());
+    }
+
+    /** How many emoji the Recent tab holds. */
+    private static final int RECENT_EMOJI = 36;
+
+    private void showEmoji(boolean wanted) {
+        emojiPage = wanted;
+        if (emojiPanel == null || keyboardView == null) {
+            return;
+        }
+        emojiPanel.setVisibility(wanted ? View.VISIBLE : View.GONE);
+        keyboardView.setVisibility(wanted ? View.GONE : View.VISIBLE);
+        if (suggestionScroller != null && wanted) {
+            suggestionScroller.setVisibility(View.GONE);
+        }
+        if (wanted) {
+            showEmojiGroup(0);
+        } else {
+            updateCandidates();
+        }
+    }
+
+    private final class EmojiAdapter extends BaseAdapter {
+        private List<String> items = Collections.emptyList();
+
+        void setItems(List<String> items) {
+            this.items = items;
+            notifyDataSetChanged();
+        }
+
+        String at(int position) {
+            return position >= 0 && position < items.size() ? items.get(position) : null;
+        }
+
+        @Override
+        public int getCount() {
+            return items.size();
+        }
+
+        @Override
+        public Object getItem(int position) {
+            return items.get(position);
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return position;
+        }
+
+        @Override
+        public View getView(int position, View recycled, ViewGroup parent) {
+            TextView view;
+            if (recycled instanceof TextView) {
+                view = (TextView) recycled;
+            } else {
+                view = new TextView(KhmerSequenceInputMethodService.this);
+                view.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
+                view.setGravity(Gravity.CENTER);
+                view.setHeight(dp(44));
+            }
+            view.setText(items.get(position));
+            return view;
+        }
     }
 
     @Override
@@ -478,6 +764,9 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         editor = info;
         // A different field, so nothing typed into the last one applies.
         typed.setLength(0);
+        if (emojiPage) {
+            showEmoji(false);
+        }
         numericField = wantsDigits(info);
         latinLayer = numericField || wantsLatin(info) || !isKhmerSubtype();
         shifted = false;
@@ -697,6 +986,9 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                 shifted = false;
                 applyKeyboard();
                 return;
+            case KEYCODE_TO_EMOJI:
+                showEmoji(true);
+                return;
             case Keyboard.KEYCODE_DELETE:
                 sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL);
                 forget(1);
@@ -763,6 +1055,9 @@ public class KhmerSequenceInputMethodService extends InputMethodService
 
     private static final int KEYCODE_TO_SYMBOLS = -101;
     private static final int KEYCODE_TO_LETTERS = -102;
+
+    /** Ours: the emoji grid, which is a view of its own rather than a Keyboard. */
+    private static final int KEYCODE_TO_EMOJI = -103;
 
     private static final int MAX_CANDIDATES = 8;
 
