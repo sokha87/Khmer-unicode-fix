@@ -160,9 +160,9 @@ def function_row(other_page_label, language_label):
     """
     out = ['    <Row android:rowEdgeFlags="bottom">\n']
     out.append(special(KEYCODE_TO_SYMBOLS, other_page_label, '15%p'))
-    out.append(special(KEYCODE_TO_EMOJI, '\U0001f642', '13%p'))
     out.append(special(KEYCODE_MODE_CHANGE, language_label, '15%p'))
     out.append(key(' ', width='37%p'))
+    out.append(special(KEYCODE_TO_EMOJI, '\U0001f642', '13%p'))
     out.append(special(KEYCODE_DONE, '\u23ce', '20%p'))
     out.append('    </Row>\n')
     return ''.join(out)
