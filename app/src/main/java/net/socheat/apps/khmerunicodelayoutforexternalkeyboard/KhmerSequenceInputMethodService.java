@@ -15,6 +15,7 @@ import android.view.Gravity;
 import android.view.ViewGroup;
 import android.view.InputDevice;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
@@ -146,6 +147,12 @@ public class KhmerSequenceInputMethodService extends InputMethodService
 
     /** The emoji grid is showing instead of the keyboard. */
     private boolean emojiPage;
+
+    /** A finger is on the keyboard; see {@link #applyKeyboard}. */
+    private boolean touching;
+
+    /** A layer swap that waited for that finger to come off. */
+    private boolean swapWaiting;
 
     private Emoji emoji;
     private View emojiPanel;
@@ -453,6 +460,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                 viewIsDark ? R.layout.soft_keyboard_dark : R.layout.soft_keyboard_light,
                 null);
         keyboardView.setOnKeyboardActionListener(this);
+        keyboardView.setOnTouchListener(keyboardTouchWatcher());
         applyKeyFont(keyboardView);
 
         // The suggestion strip sits in the input view rather than in the
@@ -769,9 +777,13 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         }
         numericField = wantsDigits(info);
         latinLayer = numericField || wantsLatin(info) || !isKhmerSubtype();
+        // Worked out before the layer is shown, so opening a field is one swap
+        // and not a swap immediately replaced by another. Cleared first
+        // because wantedShift() leaves the state alone where it has nothing to
+        // say, and a new field starts with shift off.
         shifted = false;
+        shifted = wantedShift();
         applyKeyboard();
-        updateShiftFromCursor();
         updateCandidates();
         hideIfPhysicalKeyboard();
     }
@@ -810,6 +822,22 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                 && subtype.getLocale().startsWith("km");
     }
 
+    /**
+     * Shows the layer the current state calls for.
+     *
+     * <p>Swapping the layer under a finger that is already down loses that
+     * keystroke. {@link KeyboardView#setKeyboard} sets its {@code mAbortKey},
+     * and the press is only delivered on the way up {@code if (!mAbortKey)} -
+     * so the key is swallowed with nothing to show for it. The first letter
+     * typed into a field is exactly when a swap is most likely: automatic
+     * capitalisation turns on the shift layer, and the editor can report its
+     * selection at any moment, which asks the same question again. So a swap
+     * that would land mid-press waits for the finger to lift.
+     *
+     * <p>A swap to the layer already showing is skipped outright. Most calls
+     * here are of that kind - every keystroke asks - and each one would
+     * otherwise abort a press and lay the view out again for nothing.
+     */
     private void applyKeyboard() {
         if (keyboardView == null) {
             return;
@@ -824,8 +852,51 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         } else {
             keyboard = shifted ? khmerShift : khmer;
         }
-        keyboardView.setKeyboard(keyboard);
+        if (keyboardView.getKeyboard() != keyboard) {
+            if (touching) {
+                swapWaiting = true;
+                return;
+            }
+            keyboardView.setKeyboard(keyboard);
+        }
         keyboardView.setShifted(shifted);
+    }
+
+    /**
+     * Watches for a finger without taking the touch: returning false leaves
+     * {@link KeyboardView} to handle the event as it always did.
+     *
+     * <p>The waiting swap is posted rather than run here, because a listener
+     * runs before the view does, and the view delivers the key on the way up.
+     * Swapping at that point would abort the very press being waited for.
+     */
+    private View.OnTouchListener keyboardTouchWatcher() {
+        return new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View view, MotionEvent event) {
+                switch (event.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN:
+                        touching = true;
+                        break;
+                    case MotionEvent.ACTION_UP:
+                    case MotionEvent.ACTION_CANCEL:
+                        touching = false;
+                        if (swapWaiting) {
+                            swapWaiting = false;
+                            view.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    applyKeyboard();
+                                }
+                            });
+                        }
+                        break;
+                    default:
+                        break;
+                }
+                return false;
+            }
+        };
     }
 
     /** A field that wants digits gets the number pad, whatever the language. */
@@ -866,26 +937,31 @@ public class KhmerSequenceInputMethodService extends InputMethodService
      * a full stop. Khmer has no case, so this only applies to Latin.
      */
     private void updateShiftFromCursor() {
-        if (numericField || !latinLayer || editor == null) {
-            return;
-        }
-        int modes = capsModes(editor);
-        boolean wanted = false;
-        if (modes != 0) {
-            InputConnection connection = getCurrentInputConnection();
-            if (connection == null) {
-                return;
-            }
-            CharSequence before = connection.getTextBeforeCursor(LOOKBEHIND, 0);
-            if (before == null) {
-                before = "";
-            }
-            wanted = wantsCapital(before, before.length() < LOOKBEHIND, modes);
-        }
+        boolean wanted = wantedShift();
         if (wanted != shifted) {
             shifted = wanted;
             applyKeyboard();
         }
+    }
+
+    /** Whether the shift layer belongs where the cursor is. */
+    private boolean wantedShift() {
+        if (numericField || !latinLayer || editor == null) {
+            return shifted;
+        }
+        int modes = capsModes(editor);
+        if (modes == 0) {
+            return false;
+        }
+        InputConnection connection = getCurrentInputConnection();
+        if (connection == null) {
+            return shifted;
+        }
+        CharSequence before = connection.getTextBeforeCursor(LOOKBEHIND, 0);
+        if (before == null) {
+            before = "";
+        }
+        return wantsCapital(before, before.length() < LOOKBEHIND, modes);
     }
 
     /**
