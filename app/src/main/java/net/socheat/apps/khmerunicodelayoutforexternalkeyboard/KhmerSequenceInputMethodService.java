@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.hardware.input.InputManager;
 import android.os.Handler;
+import android.os.SystemClock;
 import android.os.Looper;
 import android.inputmethodservice.InputMethodService;
 import android.inputmethodservice.Keyboard;
@@ -147,6 +148,15 @@ public class KhmerSequenceInputMethodService extends InputMethodService
 
     /** The emoji grid is showing instead of the keyboard. */
     private boolean emojiPage;
+
+    /** Shift stays on until tapped off, rather than for one key. */
+    private boolean capsLocked;
+
+    /** When the shift key was last tapped, for spotting the second tap. */
+    private long shiftTappedAt;
+
+    /** Two taps this far apart or closer lock shift. */
+    private static final long DOUBLE_TAP_MS = 500;
 
     /** A finger is on the keyboard; see {@link #applyKeyboard}. */
     private boolean touching;
@@ -781,6 +791,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         // and not a swap immediately replaced by another. Cleared first
         // because wantedShift() leaves the state alone where it has nothing to
         // say, and a new field starts with shift off.
+        capsLocked = false;
         shifted = false;
         shifted = wantedShift();
         applyKeyboard();
@@ -859,7 +870,33 @@ public class KhmerSequenceInputMethodService extends InputMethodService
             }
             keyboardView.setKeyboard(keyboard);
         }
+        if (markShiftKey(keyboard)) {
+            keyboardView.invalidateAllKeys();
+        }
         keyboardView.setShifted(shifted);
+    }
+
+    /**
+     * Draws the shift key as a lock while it is locked.
+     *
+     * <p>Shift showing on is otherwise the same picture whether it will last
+     * one letter or until it is tapped off, and a key that will not turn
+     * itself off had better say so.
+     *
+     * @return whether the key changed and the view needs drawing again
+     */
+    private boolean markShiftKey(Keyboard keyboard) {
+        CharSequence wanted = capsLocked ? "\u21ea" : "\u21e7";
+        boolean changed = false;
+        for (Keyboard.Key key : keyboard.getKeys()) {
+            if (key.codes != null && key.codes.length > 0
+                    && key.codes[0] == Keyboard.KEYCODE_SHIFT
+                    && !wanted.equals(key.label)) {
+                key.label = wanted;
+                changed = true;
+            }
+        }
+        return changed;
     }
 
     /**
@@ -944,8 +981,36 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         }
     }
 
+    /**
+     * The shift key: once for the next letter, twice to hold it.
+     *
+     * <p>A second tap soon after the first locks shift on, and any tap while
+     * it is locked turns it off again. The two taps are told apart by nothing
+     * but the gap between them, so the first tap of a pair still does what a
+     * single tap does - which is what makes the second one feel like an
+     * afterthought rather than a different gesture.
+     */
+    private void tapShift() {
+        long now = SystemClock.uptimeMillis();
+        boolean second = now - shiftTappedAt <= DOUBLE_TAP_MS;
+        shiftTappedAt = now;
+        if (capsLocked) {
+            capsLocked = false;
+            shifted = false;
+        } else if (second) {
+            capsLocked = true;
+            shifted = true;
+        } else {
+            shifted = !shifted;
+        }
+        applyKeyboard();
+    }
+
     /** Whether the shift layer belongs where the cursor is. */
     private boolean wantedShift() {
+        if (capsLocked) {
+            return true;        // held until it is tapped off
+        }
         if (numericField || !latinLayer || editor == null) {
             return shifted;
         }
@@ -1043,11 +1108,11 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     public void onKey(int primaryCode, int[] keyCodes) {
         switch (primaryCode) {
             case Keyboard.KEYCODE_SHIFT:
-                shifted = !shifted;
-                applyKeyboard();
+                tapShift();
                 return;
             case Keyboard.KEYCODE_MODE_CHANGE:
                 latinLayer = !latinLayer;
+                capsLocked = false;
                 shifted = false;
                 symbolsPage = false;
                 applyKeyboard();
@@ -1059,7 +1124,8 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                 return;
             case KEYCODE_TO_LETTERS:
                 symbolsPage = false;
-                shifted = false;
+                // A lock set before the symbols page is still set after it.
+                shifted = capsLocked;
                 applyKeyboard();
                 return;
             case KEYCODE_TO_EMOJI:
@@ -1077,8 +1143,9 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                 return;
             default:
                 commit(String.valueOf((char) primaryCode));
-                // Shift is one-shot; auto-capitalisation decides the next state.
-                if (shifted) {
+                // Shift is one-shot unless locked; otherwise automatic
+                // capitalisation decides the next state.
+                if (shifted && !capsLocked) {
                     shifted = false;
                     applyKeyboard();
                 }
@@ -1091,7 +1158,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     @Override
     public void onText(CharSequence text) {
         commit(text.toString());
-        if (shifted) {
+        if (shifted && !capsLocked) {
             shifted = false;
             applyKeyboard();
         }
