@@ -273,6 +273,9 @@ public class LanguagesActivity extends Activity {
         out.append("Dictionaries: ")
            .append(prefs.getString(KhmerSequenceInputMethodService.PREF_DICT_STATUS,
                                    "(not loaded yet)")).append('\n');
+        out.append("Keyboard width: ")
+           .append(prefs.getString(KhmerSequenceInputMethodService.PREF_WIDTH,
+                                   "(the keyboard has not opened yet)")).append('\n');
         out.append("Emoji: ")
            .append(prefs.getString(KhmerSequenceInputMethodService.PREF_EMOJI_STATUS,
                                    "(not loaded yet)")).append('\n');

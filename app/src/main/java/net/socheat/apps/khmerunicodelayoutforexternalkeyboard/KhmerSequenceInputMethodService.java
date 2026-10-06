@@ -105,6 +105,9 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     /** The last suggestion lookup, reported by {@link LanguagesActivity}. */
     static final String PREF_LAST_LOOKUP = "last_lookup";
 
+    /** How wide the keyboard came out against the screen, for diagnosing gaps. */
+    static final String PREF_WIDTH = "width";
+
     /** The emoji used most recently, so they lead the grid. */
     static final String PREF_RECENT_EMOJI = "recent_emoji";
 
@@ -492,7 +495,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     public View onCreateInputView() {
         viewIsDark = wantDarkKeyboard();
         viewHeight = keyboardHeight();
-        keyboardView = (KeyboardView) getLayoutInflater().inflate(
+        keyboardView = (WideKeyboardView) getLayoutInflater().inflate(
                 viewIsDark ? R.layout.soft_keyboard_dark : R.layout.soft_keyboard_light,
                 null);
         keyboardView.setOnKeyboardActionListener(this);
@@ -532,6 +535,19 @@ public class KhmerSequenceInputMethodService extends InputMethodService
 
         emojiPage = false;
         applyKeyboard();
+        // A keyboard narrower than the screen, or sitting away from its edge,
+        // is the window's doing rather than the layout's - and the two look
+        // identical from the outside. Recorded so they can be told apart.
+        final View measured = keyboardView;
+        measured.post(new Runnable() {
+            @Override
+            public void run() {
+                int[] at = new int[2];
+                measured.getLocationOnScreen(at);
+                note(PREF_WIDTH, "keyboard " + measured.getWidth() + "px at x=" + at[0]
+                        + ", screen " + getResources().getDisplayMetrics().widthPixels + "px");
+            }
+        });
         return root;
     }
 
