@@ -1,9 +1,11 @@
 package net.socheat.apps.khmerunicodelayoutforexternalkeyboard;
 
+import android.app.Dialog;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.hardware.input.InputManager;
+import android.os.Build;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.os.Looper;
@@ -18,6 +20,8 @@ import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
@@ -104,6 +108,9 @@ public class KhmerSequenceInputMethodService extends InputMethodService
 
     /** The last suggestion lookup, reported by {@link LanguagesActivity}. */
     static final String PREF_LAST_LOOKUP = "last_lookup";
+
+    /** Whether the keyboard was allowed past the camera cut-out. */
+    static final String PREF_CUTOUT = "cutout";
 
     /**
      * How wide the keyboard came out against the screen, for diagnosing gaps.
@@ -307,6 +314,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
             };
             inputManager.registerInputDeviceListener(deviceListener, null);
         }
+        spanTheCutout();
         loadDictionaries();
         loadKeyFont();
         nextWords.load(learnedWordsFile());
@@ -357,6 +365,42 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                 });
             }
         }, "dictionary-load").start();
+    }
+
+    /**
+     * Lets the keyboard reach the edge of the screen past a camera cut-out.
+     *
+     * <p>Held sideways, a phone with a cut-out keeps every window clear of the
+     * whole strip the camera sits in, not just the camera itself - which is
+     * why the keyboard stopped short of the left edge with a black band beside
+     * it, and why the app above it stopped short in exactly the same place.
+     * Asking to lay out into the short edges gives that strip back.
+     *
+     * <p>The field this sets arrived in API 28 and the app is compiled against
+     * an older platform, so it is reached by name. A platform without it is
+     * either too old to inset for a cut-out or has none to inset for.
+     */
+    private void spanTheCutout() {
+        if (Build.VERSION.SDK_INT < 28) {
+            return;
+        }
+        try {
+            Dialog dialog = getWindow();
+            Window window = dialog == null ? null : dialog.getWindow();
+            if (window == null) {
+                return;
+            }
+            WindowManager.LayoutParams params = window.getAttributes();
+            Field mode = WindowManager.LayoutParams.class
+                    .getDeclaredField("layoutInDisplayCutoutMode");
+            // LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            mode.setInt(params, 1);
+            window.setAttributes(params);
+            note(PREF_CUTOUT, "keyboard reaches past the cut-out");
+        } catch (Throwable t) {
+            note(PREF_CUTOUT, "left where the system put it ("
+                    + t.getClass().getSimpleName() + ")");
+        }
     }
 
     private void loadKeyFont() {

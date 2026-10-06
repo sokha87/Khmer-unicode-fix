@@ -279,6 +279,9 @@ public class LanguagesActivity extends Activity {
         out.append("Dictionaries: ")
            .append(prefs.getString(KhmerSequenceInputMethodService.PREF_DICT_STATUS,
                                    "(not loaded yet)")).append('\n');
+        out.append("Camera cut-out: ")
+           .append(prefs.getString(KhmerSequenceInputMethodService.PREF_CUTOUT,
+                                   "(the keyboard has not opened yet)")).append('\n');
         out.append("Keyboard width, upright: ")
            .append(prefs.getString(
                    KhmerSequenceInputMethodService.PREF_WIDTH_PORTRAIT,
