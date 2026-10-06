@@ -136,6 +136,16 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     /** The theme the current input view was built with. */
     private boolean viewIsDark;
 
+    /**
+     * The keyboard height the current input view was built for.
+     *
+     * <p>The layouts come in two shapes - a phone held upright gives up its
+     * number row and its outer columns for width, every other screen keeps the
+     * full layout - and the resource qualifiers choose between them. Turning
+     * the phone therefore changes this, and the view has to be built again.
+     */
+    private int viewHeight;
+
     /** Which script the on-screen keyboard is showing. */
     private boolean latinLayer;
     private boolean shifted;
@@ -466,6 +476,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     @Override
     public View onCreateInputView() {
         viewIsDark = wantDarkKeyboard();
+        viewHeight = keyboardHeight();
         keyboardView = (KeyboardView) getLayoutInflater().inflate(
                 viewIsDark ? R.layout.soft_keyboard_dark : R.layout.soft_keyboard_light,
                 null);
@@ -484,6 +495,8 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         suggestionScroller.addView(suggestionStrip);
         suggestionScroller.setBackgroundColor(viewIsDark ? 0xFF15151A : 0xFFE6E9EF);
         suggestionScroller.setVisibility(View.GONE);
+        suggestionScroller.setMinimumHeight(
+                getResources().getDimensionPixelSize(R.dimen.suggestion_height));
 
         emojiPanel = createEmojiPanel();
         emojiPanel.setVisibility(View.GONE);
@@ -497,8 +510,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT));
         root.addView(emojiPanel, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                getResources().getDimensionPixelSize(R.dimen.keyboard_height)));
+                LinearLayout.LayoutParams.MATCH_PARENT, keyboardHeight()));
 
         emojiPage = false;
         applyKeyboard();
@@ -518,6 +530,10 @@ public class KhmerSequenceInputMethodService extends InputMethodService
             emoji = null;
             note(PREF_EMOJI_STATUS, "FAILED: " + t);
         }
+    }
+
+    private int keyboardHeight() {
+        return getResources().getDimensionPixelSize(R.dimen.keyboard_height);
     }
 
     private int dp(int value) {
@@ -776,7 +792,8 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         super.onStartInputView(info, restarting);
         // Rebuild if the theme changed, since the colours are baked into the
         // inflated view and cannot be swapped on the one that is up.
-        if (keyboardView == null || viewIsDark != wantDarkKeyboard()) {
+        if (keyboardView == null || viewIsDark != wantDarkKeyboard()
+                || viewHeight != keyboardHeight()) {
             setInputView(onCreateInputView());
         }
         editor = info;
@@ -1582,10 +1599,11 @@ public class KhmerSequenceInputMethodService extends InputMethodService
             if (keyFont != null) {
                 view.setTypeface(keyFont);
             }
-            view.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+            view.setTextSize(TypedValue.COMPLEX_UNIT_PX,
+                    getResources().getDimension(R.dimen.suggestion_text));
             view.setTextColor(viewIsDark ? 0xFFFFFFFF : 0xFF1B1B1F);
             view.setGravity(Gravity.CENTER);
-            int pad = Math.round(14 * getResources().getDisplayMetrics().density);
+            int pad = getResources().getDimensionPixelSize(R.dimen.suggestion_pad);
             view.setPadding(pad, pad / 2, pad, pad / 2);
             view.setOnClickListener(new View.OnClickListener() {
                 @Override

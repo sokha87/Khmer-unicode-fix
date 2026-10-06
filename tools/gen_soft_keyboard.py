@@ -39,6 +39,36 @@ LATIN_NUMBER_ROW = {
     'shift': ['~', '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+'],
 }
 
+# The phone-portrait Latin layers, in the shape every phone keyboard uses:
+# ten keys, nine, then seven between shift and backspace with the comma and
+# full stop beside them. The number row and the outer punctuation columns come
+# off, which is what buys the width - every one of them is on the ?123 page.
+#
+# There is no Khmer equivalent of this list, and that is not an oversight. On a
+# NiDA keyboard the columns a phone keyboard drops are not punctuation: the
+# apostrophe key is ់, the semicolon key is ើ, the full stop key is ។, the
+# bracket keys are ៀ ឿ ឪ ឧ. Every position carries a letter of the language, so
+# Khmer cannot be narrowed to ten columns without taking characters away. Khmer
+# portrait gets the shorter keys and keeps all of them.
+LATIN_COMPACT = {
+    'base': [
+        ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+        ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
+        ['z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.'],
+    ],
+    'shift': [
+        ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+        ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+        ['Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>'],
+    ],
+}
+
+# What the compact layers leave behind, and where it goes instead.
+LATIN_DISPLACED = {
+    'base':  ['`', '-', '=', '[', ']', '\\', ';', "'", '/'],
+    'shift': ['~', '_', '+', '{', '}', '|', ':', '"', '?'],
+}
+
 LATIN = {
     'base': [
         LATIN_NUMBER_ROW['base'],
@@ -68,6 +98,7 @@ KEYCODE_TO_EMOJI = -103
 # has. Five rows of letters at 50dp would have been a third of a phone screen;
 # this keeps the whole keyboard to about what four rows used to take.
 TOTAL_HEIGHT = 224.0
+
 
 def header(rows):
     return ('<?xml version="1.0" encoding="utf-8"?>\n'
@@ -183,7 +214,7 @@ def check_rows_fit(body):
                                  % (number, total))
 
 
-def build_symbols(base_row, shift_row, letters_label):
+def build_symbols(base_row, shift_row, letters_label, displaced=None):
     """The page behind ?123: punctuation and symbols, plus a way back.
 
     The number row has thirteen keys, and thirteen keys across a screen are
@@ -198,7 +229,8 @@ def build_symbols(base_row, shift_row, letters_label):
     edges = [base_row[0], base_row[11], base_row[12],
              shift_row[0], shift_row[11], shift_row[12]]
 
-    out = [header(4)]
+    rows = 4 if displaced is None else 5
+    out = [header(rows)]
     for row in (digits, shifted_digits):
         width = '%.2f%%p' % (100.0 / len(row))
         out.append('    <Row>\n')
@@ -206,14 +238,30 @@ def build_symbols(base_row, shift_row, letters_label):
             out.append(key(label, width=width))
         out.append('    </Row>\n')
 
-    # Backspace rides this row so the bottom row can give space more room.
-    width = '%.2f%%p' % ((100.0 - SHIFT_WIDTH) / len(edges))
-    out.append('    <Row>\n')
-    for label in edges:
-        out.append(key(label, width=width))
-    out.append(special(KEYCODE_DELETE, '\u232b', '%.2f%%p' % SHIFT_WIDTH,
-                       'android:isRepeatable="true"'))
-    out.append('    </Row>\n')
+    if displaced is not None:
+        # The keys the compact letter layers dropped. Backspace rides the first
+        # of the two rows, so the bottom row can give the space bar more room.
+        width = '%.2f%%p' % ((100.0 - SHIFT_WIDTH) / len(displaced['base']))
+        out.append('    <Row>\n')
+        for label in displaced['base']:
+            out.append(key(label, width=width))
+        out.append(special(KEYCODE_DELETE, '\u232b', '%.2f%%p' % SHIFT_WIDTH,
+                           'android:isRepeatable="true"'))
+        out.append('    </Row>\n')
+        width = '%.2f%%p' % (100.0 / len(displaced['shift']))
+        out.append('    <Row>\n')
+        for label in displaced['shift']:
+            out.append(key(label, width=width))
+        out.append('    </Row>\n')
+    else:
+        # Backspace rides this row so the bottom row can give space more room.
+        width = '%.2f%%p' % ((100.0 - SHIFT_WIDTH) / len(edges))
+        out.append('    <Row>\n')
+        for label in edges:
+            out.append(key(label, width=width))
+        out.append(special(KEYCODE_DELETE, '\u232b', '%.2f%%p' % SHIFT_WIDTH,
+                           'android:isRepeatable="true"'))
+        out.append('    </Row>\n')
 
     out.append('    <Row android:rowEdgeFlags="bottom">\n')
     out.append(special(KEYCODE_TO_LETTERS, letters_label, '20%p'))
@@ -306,31 +354,66 @@ def khmer_rows(layer):
 
 KHMER_LABEL = 'ខ្មែរ'
 
-targets = {
-    # Under Khmer that key opens the layout's AltGr layer, not a numbers page
-    # - the digits are on the number row - so it says what it does.
-    'soft_khmer.xml':       build(khmer_rows('base'),  'ABC', 'Alt'),
-    'soft_khmer_shift.xml': build(khmer_rows('shift'), 'ABC', 'Alt'),
-    'soft_latin.xml':       build(LATIN['base'],  KHMER_LABEL, '?123'),
-    'soft_latin_shift.xml': build(LATIN['shift'], KHMER_LABEL, '?123'),
-    'soft_khmer_alt.xml':   build_alt(khmer_rows('ralt'), KHMER_LABEL),
-    'soft_latin_sym.xml':   build_symbols(
-        LATIN_NUMBER_ROW['base'], LATIN_NUMBER_ROW['shift'], 'ABC'),
-    'soft_number.xml':      build_number(),
-}
-DIMENS = ROOT + '/app/src/main/res/values/dimens.xml'
-open(DIMENS, 'w', encoding='utf-8').write(
-    '<?xml version="1.0" encoding="utf-8"?>\n'
-    '<!-- Generated by tools/gen_soft_keyboard.py - do not edit by hand. -->\n'
-    '<resources>\n'
-    '    <!-- Every page of the keyboard is this tall, the emoji grid too. -->\n'
-    '    <dimen name="keyboard_height">%.0fdp</dimen>\n'
-    '</resources>\n' % TOTAL_HEIGHT)
-print('wrote res/values/dimens.xml')
 
-for name, body in targets.items():
-    open(os.path.join(ROOT, 'app/src/main/res/xml', name), 'w', encoding='utf-8').write(body)
-    print('wrote res/xml/%s' % name)
+def layouts(compact):
+    """Every page of the keyboard, in one of its two shapes."""
+    latin = LATIN_COMPACT if compact else LATIN
+    displaced = LATIN_DISPLACED if compact else None
+    return {
+        # Under Khmer that key opens the layout's AltGr layer, not a numbers
+        # page - the digits are on the number row - so it says what it does.
+        'soft_khmer.xml':       build(khmer_rows('base'),  'ABC', 'Alt'),
+        'soft_khmer_shift.xml': build(khmer_rows('shift'), 'ABC', 'Alt'),
+        'soft_latin.xml':       build(latin['base'],  KHMER_LABEL, '?123'),
+        'soft_latin_shift.xml': build(latin['shift'], KHMER_LABEL, '?123'),
+        'soft_khmer_alt.xml':   build_alt(khmer_rows('ralt'), KHMER_LABEL),
+        'soft_latin_sym.xml':   build_symbols(
+            LATIN_NUMBER_ROW['base'], LATIN_NUMBER_ROW['shift'], 'ABC',
+            displaced),
+        'soft_number.xml':      build_number(),
+    }
+
+
+# How the keyboard is shaped on each kind of screen. The resource qualifiers do
+# the choosing: a phone held upright gets the unqualified set, anything in
+# landscape gets -land, and a tablet gets -sw600dp in either orientation
+# (a screen qualifier outranks an orientation one, so a tablet in landscape
+# lands there too - both are the full layout, so it makes no difference).
+#
+# A phone held upright is the only screen with no room to spare, so it is the
+# only one that gives anything up.
+VARIANTS = [
+    dict(xml='xml',          values='values',          compact=True,
+         height=190.0, strip=36.0, text=15.0, pad=10.0),
+    dict(xml='xml-land',     values='values-land',     compact=False,
+         height=224.0, strip=44.0, text=18.0, pad=14.0),
+    dict(xml='xml-sw600dp',  values='values-sw600dp',  compact=False,
+         height=240.0, strip=48.0, text=18.0, pad=16.0),
+]
+
+DIMENS = ('<?xml version="1.0" encoding="utf-8"?>\n'
+          '<!-- Generated by tools/gen_soft_keyboard.py - do not edit by hand. -->\n'
+          '<resources>\n'
+          '    <!-- Every page of the keyboard is this tall, the emoji grid too. -->\n'
+          '    <dimen name="keyboard_height">%(height).0fdp</dimen>\n'
+          '    <dimen name="suggestion_height">%(strip).0fdp</dimen>\n'
+          '    <dimen name="suggestion_text">%(text).0fsp</dimen>\n'
+          '    <dimen name="suggestion_pad">%(pad).0fdp</dimen>\n'
+          '</resources>\n')
+
+for variant in VARIANTS:
+    TOTAL_HEIGHT = variant['height']
+    xml_dir = os.path.join(ROOT, 'app/src/main/res', variant['xml'])
+    values_dir = os.path.join(ROOT, 'app/src/main/res', variant['values'])
+    os.makedirs(xml_dir, exist_ok=True)
+    os.makedirs(values_dir, exist_ok=True)
+    for name, body in layouts(variant['compact']).items():
+        open(os.path.join(xml_dir, name), 'w', encoding='utf-8').write(body)
+    open(os.path.join(values_dir, 'dimens.xml'), 'w', encoding='utf-8').write(
+        DIMENS % variant)
+    print('wrote res/%-14s %d pages, %s, %.0fdp tall'
+          % (variant['xml'], len(layouts(variant['compact'])),
+             'compact' if variant['compact'] else 'full', variant['height']))
 
 multi = [(n, v) for n in NIDA for l in ('base', 'shift')
          for v in [NIDA[n].get(l)] if v and len(v) > 1]
