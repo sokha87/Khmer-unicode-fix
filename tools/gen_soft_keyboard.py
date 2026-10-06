@@ -200,14 +200,19 @@ def function_row(other_page, language_label, compact=False):
     hiding emoji behind a long press.
     """
     out = ['    <Row android:rowEdgeFlags="bottom">\n']
-    out.append(special(other_page[0], other_page[1], '15%p'))
     if compact:
+        # Shift at the left edge, under the letters it acts on, and the page
+        # key over at the right with the other keys that leave this page.
         out.append(special(KEYCODE_SHIFT, '\u21e7', '15%p',
                            'android:isModifier="true" android:isSticky="true"'))
+        out.append(key(' ', width='37%p'))
+        out.append(special(KEYCODE_TO_EMOJI, '\U0001f642', '13%p'))
+        out.append(special(other_page[0], other_page[1], '15%p'))
     else:
+        out.append(special(other_page[0], other_page[1], '15%p'))
         out.append(special(KEYCODE_MODE_CHANGE, language_label, '15%p'))
-    out.append(key(' ', width='37%p'))
-    out.append(special(KEYCODE_TO_EMOJI, '\U0001f642', '13%p'))
+        out.append(key(' ', width='37%p'))
+        out.append(special(KEYCODE_TO_EMOJI, '\U0001f642', '13%p'))
     out.append(special(KEYCODE_DONE, '\u23ce', '20%p'))
     out.append('    </Row>\n')
     return ''.join(out)
