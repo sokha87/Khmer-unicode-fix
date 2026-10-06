@@ -105,8 +105,15 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     /** The last suggestion lookup, reported by {@link LanguagesActivity}. */
     static final String PREF_LAST_LOOKUP = "last_lookup";
 
-    /** How wide the keyboard came out against the screen, for diagnosing gaps. */
-    static final String PREF_WIDTH = "width";
+    /**
+     * How wide the keyboard came out against the screen, for diagnosing gaps.
+     *
+     * <p>One per orientation. Reading the measurement means opening the
+     * settings screen, which opens the keyboard again as it goes, so a single
+     * note would be overwritten with the upright one before it could be read.
+     */
+    static final String PREF_WIDTH_PORTRAIT = "width_portrait";
+    static final String PREF_WIDTH_LANDSCAPE = "width_landscape";
 
     /** The emoji used most recently, so they lead the grid. */
     static final String PREF_RECENT_EMOJI = "recent_emoji";
@@ -544,7 +551,10 @@ public class KhmerSequenceInputMethodService extends InputMethodService
             public void run() {
                 int[] at = new int[2];
                 measured.getLocationOnScreen(at);
-                note(PREF_WIDTH, "keyboard " + measured.getWidth() + "px at x=" + at[0]
+                boolean sideways = getResources().getConfiguration().orientation
+                        == Configuration.ORIENTATION_LANDSCAPE;
+                note(sideways ? PREF_WIDTH_LANDSCAPE : PREF_WIDTH_PORTRAIT,
+                        "keyboard " + measured.getWidth() + "px at x=" + at[0]
                         + ", screen " + getResources().getDisplayMetrics().widthPixels + "px");
             }
         });

@@ -173,6 +173,12 @@ public class LanguagesActivity extends Activity {
             @Override
             public void afterTextChanged(Editable text) {
                 codePoints.setText(describeCodePoints(text));
+                // Typing here is what opens the keyboard in whichever way the
+                // phone is being held, so it is also when the measurements
+                // below are worth reading again.
+                if (diagnostics != null) {
+                    diagnostics.setText(describeState());
+                }
             }
         });
         column.addView(probe);
@@ -273,9 +279,14 @@ public class LanguagesActivity extends Activity {
         out.append("Dictionaries: ")
            .append(prefs.getString(KhmerSequenceInputMethodService.PREF_DICT_STATUS,
                                    "(not loaded yet)")).append('\n');
-        out.append("Keyboard width: ")
-           .append(prefs.getString(KhmerSequenceInputMethodService.PREF_WIDTH,
-                                   "(the keyboard has not opened yet)")).append('\n');
+        out.append("Keyboard width, upright: ")
+           .append(prefs.getString(
+                   KhmerSequenceInputMethodService.PREF_WIDTH_PORTRAIT,
+                   "(not opened upright yet)")).append('\n');
+        out.append("Keyboard width, sideways: ")
+           .append(prefs.getString(
+                   KhmerSequenceInputMethodService.PREF_WIDTH_LANDSCAPE,
+                   "(not opened sideways yet)")).append('\n');
         out.append("Emoji: ")
            .append(prefs.getString(KhmerSequenceInputMethodService.PREF_EMOJI_STATUS,
                                    "(not loaded yet)")).append('\n');
