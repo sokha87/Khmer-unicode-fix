@@ -174,6 +174,16 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     /** A layer swap that waited for that finger to come off. */
     private boolean swapWaiting;
 
+    /** Where the finger went down, for telling a slide from a tap. */
+    private float touchDownX;
+    private float touchDownY;
+
+    /** The finger went down on the space bar. */
+    private boolean touchOnSpace;
+
+    /** It then slid far enough sideways to mean "change the language". */
+    private boolean spaceSlid;
+
     private Emoji emoji;
     private View emojiPanel;
     private GridView emojiGrid;
@@ -493,7 +503,10 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         suggestionScroller = new HorizontalScrollView(this);
         suggestionScroller.setHorizontalScrollBarEnabled(false);
         suggestionScroller.addView(suggestionStrip);
-        suggestionScroller.setBackgroundColor(viewIsDark ? 0xFF15151A : 0xFFE6E9EF);
+        // Transparent, so the strip does not sit as a grey band across the
+        // screen when it has nothing to say. What shows through is whatever
+        // the app is drawing, which is why the words below carry a shadow.
+        suggestionScroller.setBackgroundColor(0x00000000);
         suggestionScroller.setVisibility(View.GONE);
         suggestionScroller.setMinimumHeight(
                 getResources().getDimensionPixelSize(R.dimen.suggestion_height));
@@ -887,10 +900,42 @@ public class KhmerSequenceInputMethodService extends InputMethodService
             }
             keyboardView.setKeyboard(keyboard);
         }
-        if (markShiftKey(keyboard)) {
+        if (markShiftKey(keyboard) | markSpaceKey(keyboard)) {
             keyboardView.invalidateAllKeys();
         }
         keyboardView.setShifted(shifted);
+    }
+
+    /**
+     * Labels the space bar with the script it is typing.
+     *
+     * <p>Where the layout is compact there is no language key: shift took that
+     * slot and the language is changed by sliding across the space bar. A
+     * hidden gesture on a blank key is the same mistake as hiding emoji behind
+     * a long press, so the space bar says which script it is on, and the thing
+     * to slide is the thing that names it.
+     *
+     * @return whether the key changed and the view needs drawing again
+     */
+    private boolean markSpaceKey(Keyboard keyboard) {
+        Keyboard.Key space = null;
+        for (Keyboard.Key key : keyboard.getKeys()) {
+            if (isSpace(key)) {
+                space = key;
+            } else if (key.codes != null && key.codes.length > 0
+                    && key.codes[0] == KEYCODE_TO_LETTERS) {
+                // The symbols and AltGr pages already have a key with this
+                // name on them, to get back to the letters. Two keys reading
+                // ABC side by side would say less than one.
+                return false;
+            }
+        }
+        CharSequence wanted = latinLayer ? "ABC" : "\u1781\u17d2\u1798\u17c2\u179a";
+        if (space == null || wanted.equals(space.label)) {
+            return false;
+        }
+        space.label = wanted;
+        return true;
     }
 
     /**
@@ -931,10 +976,18 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                 switch (event.getActionMasked()) {
                     case MotionEvent.ACTION_DOWN:
                         touching = true;
+                        touchDownX = event.getX();
+                        touchDownY = event.getY();
+                        touchOnSpace = isSpace(keyUnder(event.getX(), event.getY()));
+                        spaceSlid = false;
                         break;
                     case MotionEvent.ACTION_UP:
                     case MotionEvent.ACTION_CANCEL:
                         touching = false;
+                        // Worked out before the view sees the event, so the
+                        // space this gesture is about to type can be turned
+                        // into a language change instead.
+                        spaceSlid = touchOnSpace && slidSideways(event);
                         if (swapWaiting) {
                             swapWaiting = false;
                             view.post(new Runnable() {
@@ -1021,6 +1074,39 @@ public class KhmerSequenceInputMethodService extends InputMethodService
             shifted = !shifted;
         }
         applyKeyboard();
+    }
+
+    /**
+     * The key under a point, or null between keys.
+     *
+     * <p>Key positions are measured inside the view's padding, which is what
+     * {@link KeyboardView} takes off a touch before hit-testing; the same has
+     * to come off here or the answer is out by however much padding there is.
+     */
+    private Keyboard.Key keyUnder(float x, float y) {
+        Keyboard keyboard = keyboardView == null ? null : keyboardView.getKeyboard();
+        if (keyboard == null) {
+            return null;
+        }
+        int atX = (int) x - keyboardView.getPaddingLeft();
+        int atY = (int) y - keyboardView.getPaddingTop();
+        for (Keyboard.Key key : keyboard.getKeys()) {
+            if (key.isInside(atX, atY)) {
+                return key;
+            }
+        }
+        return null;
+    }
+
+    private static boolean isSpace(Keyboard.Key key) {
+        return key != null && key.codes != null && key.codes.length > 0
+                && key.codes[0] == ' ';
+    }
+
+    /** Far enough across, and more across than up, to be meant as a slide. */
+    private boolean slidSideways(MotionEvent event) {
+        float across = Math.abs(event.getX() - touchDownX);
+        return across >= dp(40) && across > Math.abs(event.getY() - touchDownY);
     }
 
     /** Whether the shift layer belongs where the cursor is. */
@@ -1159,6 +1245,18 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                 }
                 return;
             default:
+                if (primaryCode == ' ' && spaceSlid) {
+                    // A slide across the space bar, not a space. This is the
+                    // only way to change language where the layout is compact
+                    // enough to have given up its language key.
+                    spaceSlid = false;
+                    latinLayer = !latinLayer;
+                    capsLocked = false;
+                    shifted = false;
+                    symbolsPage = false;
+                    applyKeyboard();
+                    return;
+                }
                 commit(String.valueOf((char) primaryCode));
                 // Shift is one-shot unless locked; otherwise automatic
                 // capitalisation decides the next state.
@@ -1602,6 +1700,10 @@ public class KhmerSequenceInputMethodService extends InputMethodService
             view.setTextSize(TypedValue.COMPLEX_UNIT_PX,
                     getResources().getDimension(R.dimen.suggestion_text));
             view.setTextColor(viewIsDark ? 0xFFFFFFFF : 0xFF1B1B1F);
+            // The strip is transparent, so a word can land on anything at all.
+            // The shadow is the opposite of the text, which keeps it readable
+            // whichever way the background goes.
+            view.setShadowLayer(3f, 0f, 1f, viewIsDark ? 0xCC000000 : 0xCCFFFFFF);
             view.setGravity(Gravity.CENTER);
             int pad = getResources().getDimensionPixelSize(R.dimen.suggestion_pad);
             view.setPadding(pad, pad / 2, pad, pad / 2);

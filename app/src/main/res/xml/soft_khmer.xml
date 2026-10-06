@@ -49,22 +49,21 @@
         <Key android:codes="6091" android:keyLabel="់" android:keyWidth="9.09%p" />
     </Row>
     <Row>
-        <Key android:codes="-1" android:keyLabel="⇧" android:keyWidth="12.00%p" android:isModifier="true" android:isSticky="true" />
-        <Key android:codes="6027" android:keyLabel="ឋ" android:keyWidth="7.60%p" />
-        <Key android:codes="6017" android:keyLabel="ខ" android:keyWidth="7.60%p" />
-        <Key android:codes="6021" android:keyLabel="ច" android:keyWidth="7.60%p" />
-        <Key android:codes="6044" android:keyLabel="វ" android:keyWidth="7.60%p" />
-        <Key android:codes="6036" android:keyLabel="ប" android:keyWidth="7.60%p" />
-        <Key android:codes="6035" android:keyLabel="ន" android:keyWidth="7.60%p" />
-        <Key android:codes="6040" android:keyLabel="ម" android:keyWidth="7.60%p" />
-        <Key android:codes="6075" android:keyLabel="ុំ" android:keyOutputText="ុំ" android:keyWidth="7.60%p" />
-        <Key android:codes="6100" android:keyLabel="។" android:keyWidth="7.60%p" />
-        <Key android:codes="6090" android:keyLabel="៊" android:keyWidth="7.60%p" />
+        <Key android:codes="6027" android:keyLabel="ឋ" android:keyWidth="8.80%p" />
+        <Key android:codes="6017" android:keyLabel="ខ" android:keyWidth="8.80%p" />
+        <Key android:codes="6021" android:keyLabel="ច" android:keyWidth="8.80%p" />
+        <Key android:codes="6044" android:keyLabel="វ" android:keyWidth="8.80%p" />
+        <Key android:codes="6036" android:keyLabel="ប" android:keyWidth="8.80%p" />
+        <Key android:codes="6035" android:keyLabel="ន" android:keyWidth="8.80%p" />
+        <Key android:codes="6040" android:keyLabel="ម" android:keyWidth="8.80%p" />
+        <Key android:codes="6075" android:keyLabel="ុំ" android:keyOutputText="ុំ" android:keyWidth="8.80%p" />
+        <Key android:codes="6100" android:keyLabel="។" android:keyWidth="8.80%p" />
+        <Key android:codes="6090" android:keyLabel="៊" android:keyWidth="8.80%p" />
         <Key android:codes="-5" android:keyLabel="⌫" android:keyWidth="12.00%p" android:isRepeatable="true" />
     </Row>
     <Row android:rowEdgeFlags="bottom">
         <Key android:codes="-101" android:keyLabel="Alt" android:keyWidth="15%p" />
-        <Key android:codes="-2" android:keyLabel="ABC" android:keyWidth="15%p" />
+        <Key android:codes="-1" android:keyLabel="⇧" android:keyWidth="15%p" android:isModifier="true" android:isSticky="true" />
         <Key android:codes="32" android:keyLabel=" " android:keyWidth="37%p" />
         <Key android:codes="-103" android:keyLabel="🙂" android:keyWidth="13%p" />
         <Key android:codes="-4" android:keyLabel="⏎" android:keyWidth="20%p" />

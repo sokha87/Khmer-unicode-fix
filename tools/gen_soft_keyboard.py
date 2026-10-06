@@ -148,7 +148,7 @@ def special(code, label, width, extra=''):
 SHIFT_WIDTH = 12.0      # per cent of the row width, for shift and backspace
 
 
-def build(rows, language_label, other_page_label):
+def build(rows, language_label, other_page_label, compact=False):
     out = [header(len(rows) + 1)]       # the rows given, plus the function row
 
     # Rows differ in length, so share each row's width out across its own keys.
@@ -162,11 +162,14 @@ def build(rows, language_label, other_page_label):
             out.append(key(label, width=width))
         out.append('    </Row>\n')
 
-    # Bottom letter row, wrapped by shift and backspace.
-    width = '%.2f%%p' % ((100.0 - 2 * SHIFT_WIDTH) / len(rows[-1]))
+    # Bottom letter row. On a phone shift has moved down to the function row,
+    # so the letters keep the width it used to take.
+    taken = SHIFT_WIDTH if compact else 2 * SHIFT_WIDTH
+    width = '%.2f%%p' % ((100.0 - taken) / len(rows[-1]))
     out.append('    <Row>\n')
-    out.append(special(KEYCODE_SHIFT, '\u21e7', '%.2f%%p' % SHIFT_WIDTH,
-                       'android:isModifier="true" android:isSticky="true"'))
+    if not compact:
+        out.append(special(KEYCODE_SHIFT, '\u21e7', '%.2f%%p' % SHIFT_WIDTH,
+                           'android:isModifier="true" android:isSticky="true"'))
     for label in rows[-1]:
         out.append(key(label, width=width))
     out.append(special(KEYCODE_DELETE, '\u232b', '%.2f%%p' % SHIFT_WIDTH,
@@ -174,7 +177,7 @@ def build(rows, language_label, other_page_label):
     out.append('    </Row>\n')
 
     # Function row.
-    out.append(function_row(other_page_label, language_label))
+    out.append(function_row(other_page_label, language_label, compact))
 
     out.append('</Keyboard>\n')
     body = ''.join(out)
@@ -182,16 +185,26 @@ def build(rows, language_label, other_page_label):
     return body
 
 
-def function_row(other_page_label, language_label):
+def function_row(other_page_label, language_label, compact=False):
     """The bottom row of a letter layer.
 
     Emoji get a key of their own here rather than a long press on the space
     bar, which is where most keyboards hide them: a key that is only found by
     holding another key down is a key most people never find.
+
+    On a phone shift takes the slot the language key had, and the language is
+    changed by sliding across the space bar instead. The space bar is labelled
+    with the script it is currently typing, so the slide has something to point
+    at - an unlabelled key with a hidden gesture would be the same mistake as
+    hiding emoji behind a long press.
     """
     out = ['    <Row android:rowEdgeFlags="bottom">\n']
     out.append(special(KEYCODE_TO_SYMBOLS, other_page_label, '15%p'))
-    out.append(special(KEYCODE_MODE_CHANGE, language_label, '15%p'))
+    if compact:
+        out.append(special(KEYCODE_SHIFT, '\u21e7', '15%p',
+                           'android:isModifier="true" android:isSticky="true"'))
+    else:
+        out.append(special(KEYCODE_MODE_CHANGE, language_label, '15%p'))
     out.append(key(' ', width='37%p'))
     out.append(special(KEYCODE_TO_EMOJI, '\U0001f642', '13%p'))
     out.append(special(KEYCODE_DONE, '\u23ce', '20%p'))
@@ -362,10 +375,10 @@ def layouts(compact):
     return {
         # Under Khmer that key opens the layout's AltGr layer, not a numbers
         # page - the digits are on the number row - so it says what it does.
-        'soft_khmer.xml':       build(khmer_rows('base'),  'ABC', 'Alt'),
-        'soft_khmer_shift.xml': build(khmer_rows('shift'), 'ABC', 'Alt'),
-        'soft_latin.xml':       build(latin['base'],  KHMER_LABEL, '?123'),
-        'soft_latin_shift.xml': build(latin['shift'], KHMER_LABEL, '?123'),
+        'soft_khmer.xml':       build(khmer_rows('base'),  'ABC', 'Alt', compact),
+        'soft_khmer_shift.xml': build(khmer_rows('shift'), 'ABC', 'Alt', compact),
+        'soft_latin.xml':       build(latin['base'],  KHMER_LABEL, '?123', compact),
+        'soft_latin_shift.xml': build(latin['shift'], KHMER_LABEL, '?123', compact),
         'soft_khmer_alt.xml':   build_alt(khmer_rows('ralt'), KHMER_LABEL),
         'soft_latin_sym.xml':   build_symbols(
             LATIN_NUMBER_ROW['base'], LATIN_NUMBER_ROW['shift'], 'ABC',
@@ -385,8 +398,10 @@ def layouts(compact):
 VARIANTS = [
     dict(xml='xml',          values='values',          compact=True,
          height=190.0, strip=36.0, text=15.0, pad=10.0),
-    dict(xml='xml-land',     values='values-land',     compact=False,
-         height=224.0, strip=44.0, text=18.0, pad=14.0),
+    # A phone on its side has less height, not more, so landscape is the
+    # compact layout too - shorter still, and wider keys for free.
+    dict(xml='xml-land',     values='values-land',     compact=True,
+         height=160.0, strip=32.0, text=14.0, pad=10.0),
     dict(xml='xml-sw600dp',  values='values-sw600dp',  compact=False,
          height=240.0, strip=48.0, text=18.0, pad=16.0),
 ]
