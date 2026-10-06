@@ -131,6 +131,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     private Keyboard latinShift;
     private Keyboard number;
     private Keyboard khmerSymbols;
+    private Keyboard khmerNumbers;
     private Keyboard latinSymbols;
 
     /** The theme the current input view was built with. */
@@ -153,8 +154,11 @@ public class KhmerSequenceInputMethodService extends InputMethodService
     /** The field wants digits, so the number pad is showing. */
     private boolean numericField;
 
-    /** The ?123 page is showing instead of the letters. */
+    /** The ?123 or Alt page is showing instead of the letters. */
     private boolean symbolsPage;
+
+    /** The Khmer numbers page is showing instead of the letters. */
+    private boolean numbersPage;
 
     /** The emoji grid is showing instead of the keyboard. */
     private boolean emojiPage;
@@ -262,6 +266,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         latinShift = new Keyboard(this, R.xml.soft_latin_shift);
         number = new Keyboard(this, R.xml.soft_number);
         khmerSymbols = new Keyboard(this, R.xml.soft_khmer_alt);
+        khmerNumbers = new Keyboard(this, R.xml.soft_khmer_num);
         latinSymbols = new Keyboard(this, R.xml.soft_latin_sym);
     }
 
@@ -886,6 +891,8 @@ public class KhmerSequenceInputMethodService extends InputMethodService
         Keyboard keyboard;
         if (numericField) {
             keyboard = number;
+        } else if (numbersPage) {
+            keyboard = latinLayer ? latinSymbols : khmerNumbers;
         } else if (symbolsPage) {
             keyboard = latinLayer ? latinSymbols : khmerSymbols;
         } else if (latinLayer) {
@@ -924,9 +931,10 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                 space = key;
             } else if (key.codes != null && key.codes.length > 0
                     && key.codes[0] == KEYCODE_TO_LETTERS) {
-                // The symbols and AltGr pages already have a key with this
-                // name on them, to get back to the letters. Two keys reading
-                // ABC side by side would say less than one.
+                // The other pages already have a key with this name on them,
+                // to get back to the letters, and two keys reading ABC side by
+                // side say less than one. The language key is no clash: it is
+                // named for the script it switches to, not the one in use.
                 return false;
             }
         }
@@ -1218,16 +1226,25 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                 capsLocked = false;
                 shifted = false;
                 symbolsPage = false;
+                numbersPage = false;
                 applyKeyboard();
                 return;
             case KEYCODE_TO_SYMBOLS:
                 symbolsPage = true;
+                numbersPage = false;
+                shifted = false;
+                applyKeyboard();
+                return;
+            case KEYCODE_TO_NUMBERS:
+                numbersPage = true;
+                symbolsPage = false;
                 shifted = false;
                 applyKeyboard();
                 return;
             case KEYCODE_TO_LETTERS:
                 symbolsPage = false;
-                // A lock set before the symbols page is still set after it.
+                numbersPage = false;
+                // A lock set before another page is still set after it.
                 shifted = capsLocked;
                 applyKeyboard();
                 return;
@@ -1254,6 +1271,7 @@ public class KhmerSequenceInputMethodService extends InputMethodService
                     capsLocked = false;
                     shifted = false;
                     symbolsPage = false;
+                    numbersPage = false;
                     applyKeyboard();
                     return;
                 }
@@ -1316,6 +1334,15 @@ public class KhmerSequenceInputMethodService extends InputMethodService
 
     /** Ours: the emoji grid, which is a view of its own rather than a Keyboard. */
     private static final int KEYCODE_TO_EMOJI = -103;
+
+    /**
+     * Ours: the Khmer number row, which on a phone has a page to itself.
+     *
+     * <p>Those keys are characters of the language rather than a convenience -
+     * ១ to ០, « », ឥ ឲ, ៛ ៗ and the diacritics ៍ ័ ៏ ៌ - so hiding the row to
+     * win width could only mean moving them, never dropping them.
+     */
+    private static final int KEYCODE_TO_NUMBERS = -104;
 
     private static final int MAX_CANDIDATES = 8;
 

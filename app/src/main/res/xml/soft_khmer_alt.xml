@@ -63,7 +63,8 @@
     </Row>
     <Row android:rowEdgeFlags="bottom">
         <Key android:codes="-102" android:keyLabel="ខ្មែរ" android:keyWidth="20%p" />
-        <Key android:codes="32" android:keyLabel=" " android:keyWidth="52%p" />
+        <Key android:codes="-104" android:keyLabel="១២៣" android:keyWidth="15%p" />
+        <Key android:codes="32" android:keyLabel=" " android:keyWidth="37%p" />
         <Key android:codes="-4" android:keyLabel="⏎" android:keyWidth="28%p" />
     </Row>
 </Keyboard>

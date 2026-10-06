@@ -92,6 +92,7 @@ KEYCODE_SHIFT, KEYCODE_MODE_CHANGE, KEYCODE_DONE, KEYCODE_DELETE = -1, -2, -4, -
 KEYCODE_TO_SYMBOLS = -101
 KEYCODE_TO_LETTERS = -102
 KEYCODE_TO_EMOJI = -103
+KEYCODE_TO_NUMBERS = -104
 
 # Every page is this tall in total, so the keyboard does not jump in size when
 # one is swapped for another, and each page divides it by however many rows it
@@ -148,7 +149,7 @@ def special(code, label, width, extra=''):
 SHIFT_WIDTH = 12.0      # per cent of the row width, for shift and backspace
 
 
-def build(rows, language_label, other_page_label, compact=False):
+def build(rows, language_label, other_page, compact=False):
     out = [header(len(rows) + 1)]       # the rows given, plus the function row
 
     # Rows differ in length, so share each row's width out across its own keys.
@@ -177,7 +178,7 @@ def build(rows, language_label, other_page_label, compact=False):
     out.append('    </Row>\n')
 
     # Function row.
-    out.append(function_row(other_page_label, language_label, compact))
+    out.append(function_row(other_page, language_label, compact))
 
     out.append('</Keyboard>\n')
     body = ''.join(out)
@@ -185,7 +186,7 @@ def build(rows, language_label, other_page_label, compact=False):
     return body
 
 
-def function_row(other_page_label, language_label, compact=False):
+def function_row(other_page, language_label, compact=False):
     """The bottom row of a letter layer.
 
     Emoji get a key of their own here rather than a long press on the space
@@ -199,7 +200,7 @@ def function_row(other_page_label, language_label, compact=False):
     hiding emoji behind a long press.
     """
     out = ['    <Row android:rowEdgeFlags="bottom">\n']
-    out.append(special(KEYCODE_TO_SYMBOLS, other_page_label, '15%p'))
+    out.append(special(other_page[0], other_page[1], '15%p'))
     if compact:
         out.append(special(KEYCODE_SHIFT, '\u21e7', '15%p',
                            'android:isModifier="true" android:isSticky="true"'))
@@ -309,7 +310,7 @@ def build_number():
     return body
 
 
-def build_alt(rows, letters_label):
+def build_alt(rows, letters_label, numbers=False):
     """The Khmer page behind ?123: the layout's AltGr layer.
 
     A NiDA keyboard has four layers, and the third one - reached with the right
@@ -346,7 +347,59 @@ def build_alt(rows, letters_label):
 
     out.append('    <Row android:rowEdgeFlags="bottom">\n')
     out.append(special(KEYCODE_TO_LETTERS, letters_label, '20%p'))
-    out.append(key(' ', width='52%p'))
+    if numbers:
+        out.append(special(KEYCODE_TO_NUMBERS, '\u17e1\u17e2\u17e3', '15%p'))
+        out.append(key(' ', width='37%p'))
+    else:
+        out.append(key(' ', width='52%p'))
+    out.append(special(KEYCODE_DONE, '\u23ce', '28%p'))
+    out.append('    </Row>\n')
+    out.append('</Keyboard>\n')
+    body = ''.join(out)
+    check_rows_fit(body)
+    return body
+
+
+def build_numbers(letters_label):
+    """Where the Khmer number row goes when a phone has no room for it.
+
+    The row is thirteen keys on each of two layers, and all twenty-six are
+    characters of the language rather than a convenience: the digits ១ to ០,
+    the quotation marks « », the independent vowels ឥ ឲ, the riel ៛, the
+    repetition mark ៗ and the diacritics ៍ ័ ៏ ៌. Hiding the row on a phone
+    therefore cannot mean dropping them, only moving them - so they are laid
+    out here three rows deep, which makes every one of them wider than it was
+    on the row it came off.
+    """
+    digits = [NIDA[k]['base'] for k in NUMBER_ROW[1:11]]
+    marks = [NIDA['GRAVE']['base'], NIDA['GRAVE']['shift'],
+             NIDA['MINUS']['base'], NIDA['EQUALS']['base'],
+             NIDA['2']['shift'], NIDA['4']['shift'],
+             NIDA['6']['shift'], NIDA['7']['shift'],
+             NIDA['8']['shift'], NIDA['MINUS']['shift']]
+    rest = [NIDA['1']['shift'], NIDA['3']['shift'], NIDA['5']['shift'],
+            NIDA['9']['shift'], NIDA['0']['shift'], NIDA['EQUALS']['shift']]
+
+    out = [header(4)]
+    for row in (digits, marks):
+        width = '%.2f%%p' % (100.0 / len(row))
+        out.append('    <Row>\n')
+        for label in row:
+            out.append(key(label, width=width))
+        out.append('    </Row>\n')
+
+    width = '%.2f%%p' % ((100.0 - SHIFT_WIDTH) / len(rest))
+    out.append('    <Row>\n')
+    for label in rest:
+        out.append(key(label, width=width))
+    out.append(special(KEYCODE_DELETE, '\u232b', '%.2f%%p' % SHIFT_WIDTH,
+                       'android:isRepeatable="true"'))
+    out.append('    </Row>\n')
+
+    out.append('    <Row android:rowEdgeFlags="bottom">\n')
+    out.append(special(KEYCODE_TO_LETTERS, letters_label, '20%p'))
+    out.append(special(KEYCODE_TO_SYMBOLS, 'Alt', '15%p'))
+    out.append(key(' ', width='37%p'))
     out.append(special(KEYCODE_DONE, '\u23ce', '28%p'))
     out.append('    </Row>\n')
     out.append('</Keyboard>\n')
@@ -372,14 +425,23 @@ def layouts(compact):
     """Every page of the keyboard, in one of its two shapes."""
     latin = LATIN_COMPACT if compact else LATIN
     displaced = LATIN_DISPLACED if compact else None
+    # Where the full shape keeps the number row on the letters and that key
+    # goes straight to the AltGr layer, the compact shape has sent the number
+    # row to a page of its own, so the key goes there and the AltGr layer is
+    # one further on. Digits are wanted more often than independent vowels, so
+    # digits are the ones a single tap reaches.
+    khmer_page = (KEYCODE_TO_NUMBERS, '\u17e1\u17e2\u17e3') if compact \
+        else (KEYCODE_TO_SYMBOLS, 'Alt')
+    khmer_letters = (lambda layer: khmer_rows(layer)[1:]) if compact else khmer_rows
     return {
-        # Under Khmer that key opens the layout's AltGr layer, not a numbers
-        # page - the digits are on the number row - so it says what it does.
-        'soft_khmer.xml':       build(khmer_rows('base'),  'ABC', 'Alt', compact),
-        'soft_khmer_shift.xml': build(khmer_rows('shift'), 'ABC', 'Alt', compact),
-        'soft_latin.xml':       build(latin['base'],  KHMER_LABEL, '?123', compact),
-        'soft_latin_shift.xml': build(latin['shift'], KHMER_LABEL, '?123', compact),
-        'soft_khmer_alt.xml':   build_alt(khmer_rows('ralt'), KHMER_LABEL),
+        'soft_khmer.xml':       build(khmer_letters('base'),  'ABC', khmer_page, compact),
+        'soft_khmer_shift.xml': build(khmer_letters('shift'), 'ABC', khmer_page, compact),
+        'soft_latin.xml':       build(latin['base'],  KHMER_LABEL,
+                                      (KEYCODE_TO_SYMBOLS, '?123'), compact),
+        'soft_latin_shift.xml': build(latin['shift'], KHMER_LABEL,
+                                      (KEYCODE_TO_SYMBOLS, '?123'), compact),
+        'soft_khmer_alt.xml':   build_alt(khmer_rows('ralt'), KHMER_LABEL, compact),
+        'soft_khmer_num.xml':   build_numbers(KHMER_LABEL),
         'soft_latin_sym.xml':   build_symbols(
             LATIN_NUMBER_ROW['base'], LATIN_NUMBER_ROW['shift'], 'ABC',
             displaced),
